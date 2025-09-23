@@ -253,9 +253,6 @@ export async function fetchRunDetails(runNumber: string): Promise<RunDetails> {
     allTests.sort((a, b) => a.name.localeCompare(b.name));
     
     console.log(`✅ Completed fetching all test data for run ${runNumber}. Total tests: ${allTests.length}`);
-    allTests.forEach(test => {
-      console.log(`Test: ${test.name} - ${test.status.toUpperCase()}`);
-    });
     
     return {
       runNumber,

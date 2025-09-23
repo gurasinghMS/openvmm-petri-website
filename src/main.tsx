@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Header } from './header';
 import { RunOverview } from './runs_overview';
-import { RunDetailsView } from './run_details';
 import { TestDetails } from './test_details';
 import { TestLogViewer } from './test_log_viewer';
-import { fetchRunData } from './fetch';
 import './styles.css';
 
 // Main function that returns the Header component

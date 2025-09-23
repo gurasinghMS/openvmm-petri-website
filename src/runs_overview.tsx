@@ -18,8 +18,6 @@ import {
   getCachedRunCount,
   TestStats,
   getAnalysisState,
-  setAnalysisState,
-  isAnalysisComplete
 } from './dataStore';
 import { TestsOverview } from './tests_overview';
 import { RunDetailsView } from './run_details';
@@ -49,8 +47,6 @@ export function RunOverview({
   selectedRunDate, 
   onBack,
   backButtonText = "All Runs",
-  searchFilter,
-  onSearchFilterChange 
 }: RunOverviewProps): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -136,7 +132,6 @@ export function RunOverview({
     const unsubscribe = addDataStoreListener(() => {
       // Update test stats from cache whenever dataStore changes
       const newTestStats = getTestStatsFromCache();
-      const cachedRunCount = getCachedRunCount();
       
       if (newTestStats.size > 0) {
         setTestStats(newTestStats);
@@ -149,7 +144,6 @@ export function RunOverview({
 
     // Also update immediately if there's already cached data
     const currentTestStats = getTestStatsFromCache();
-    const currentCachedRunCount = getCachedRunCount();
     
     if (currentTestStats.size > 0) {
       setTestStats(currentTestStats);
@@ -340,7 +334,7 @@ export function RunOverview({
           <span className="no-pr">-</span>
         );
       },
-      sortingFn: (rowA, rowB, columnId) => {
+      sortingFn: (rowA, rowB) => {
         const a = rowA.original.metadata.ghPr;
         const b = rowB.original.metadata.ghPr;
         if (!a && !b) return 0;

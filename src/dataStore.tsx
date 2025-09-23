@@ -269,7 +269,7 @@ export function getTestResultsFromCache(testName: string): Array<{
 }
 
 // Get runs that need to be processed for a specific test (runs not in cache)
-export function getUncachedRunsForTest(testName: string): string[] {
+export function getUncachedRunsForTest(): string[] {
   const uncachedRuns: string[] = [];
   
   dataStore.allRuns.forEach(run => {

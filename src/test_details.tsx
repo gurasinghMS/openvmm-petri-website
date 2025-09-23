@@ -8,7 +8,6 @@ import {
   flexRender,
   SortingState,
 } from '@tanstack/react-table';
-import { RunData, RunDetails, TestResult } from './fetch';
 import { 
   getAllRuns, 
   getTestResultsFromCache, 
@@ -87,7 +86,7 @@ export function TestDetails({
         }
         
         // Get runs that still need to be processed for "analyze all" mode
-        const uncachedRuns = getUncachedRunsForTest(testName);
+        const uncachedRuns = getUncachedRunsForTest();
         
         if (uncachedRuns.length === 0) {
           // All runs are cached, we're done
@@ -101,7 +100,7 @@ export function TestDetails({
         console.log(`📦 Will fetch in batches of 25 runs`);
         
         // Fetch the remaining runs in batches
-        await fetchAndCacheRunDetails(uncachedRuns, (completed, total) => {
+        await fetchAndCacheRunDetails(uncachedRuns, (completed) => {
           // Update progress
           setProcessedRuns(cachedResults.length + completed);
           

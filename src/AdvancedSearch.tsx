@@ -1,5 +1,3 @@
-import React, { useState } from 'react';
-
 export interface LogEntry {
   timestamp: string;
   relative: string;

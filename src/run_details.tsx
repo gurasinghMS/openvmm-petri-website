@@ -18,19 +18,6 @@ interface RunDetailsProps {
   onTestLogClick?: (testName: string, jobName: string) => void;
 }
 
-// Helper function to format date for display
-function formatRunDate(date: Date | undefined): string {
-  if (!date || isNaN(date.getTime())) return '';
-  
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
 export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

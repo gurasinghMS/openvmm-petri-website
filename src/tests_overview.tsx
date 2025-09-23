@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,7 +8,7 @@ import {
   flexRender,
   SortingState,
 } from '@tanstack/react-table';
-import { RunDetails, RunData } from './fetch';
+import { RunData } from './fetch';
 import { TestStats } from './dataStore';
 import './styles.css';
 
@@ -27,14 +27,12 @@ interface TestsOverviewProps {
 }
 
 export function TestsOverview({ 
-  runs, 
   testStats, 
   loading, 
   error, 
   processedRuns, 
   totalRuns, 
   loadAllRuns, 
-  onLoadAll,
   searchFilter,
   architectureFilter,
   onTestClick
@@ -114,18 +112,6 @@ export function TestsOverview({
 
   // Convert testStats Map to array for the table
   const allTests = useMemo(() => Array.from(testStats.values()), [testStats]);
-
-  // Extract unique architectures from test data
-  const uniqueArchitectures = useMemo(() => {
-    const architectures = new Set<string>();
-    allTests.forEach(test => {
-      const parts = test.testName.split('/');
-      if (parts[0]) {
-        architectures.add(parts[0]);
-      }
-    });
-    return Array.from(architectures).sort();
-  }, [allTests]);
 
   // Filter tests by architecture
   const filteredTests = useMemo(() => {

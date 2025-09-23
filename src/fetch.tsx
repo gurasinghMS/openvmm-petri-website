@@ -49,8 +49,6 @@ async function fetchPRTitles(prNumbers: string[]): Promise<Map<string, string>> 
       console.log(`PR #${prNumber} response:`, response.status, response.statusText);
       
       if (response.status === 403) {
-        const rateLimitReset = response.headers.get('x-ratelimit-reset');
-        const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
         return null;
       }
       

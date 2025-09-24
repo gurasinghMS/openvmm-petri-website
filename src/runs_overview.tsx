@@ -14,10 +14,11 @@ import {
   fetchAndCacheRunDetails, 
   addDataStoreListener, 
   getRunDetails,
-  getTestStatsFromCache,
+  getTestStatsFromCacheByBranch,
   getCachedRunCount,
   TestStats,
   getAnalysisState,
+  markTestsPageAccessed,
 } from './dataStore';
 import { TestsOverview } from './tests_overview';
 import { RunDetailsView } from './run_details';
@@ -65,7 +66,7 @@ export function RunOverview({
   
   // Tests page state
   const [testSearchFilter, setTestSearchFilter] = useState<string>('');
-  const [testArchitectureFilter, setTestArchitectureFilter] = useState<string>('all');
+  const [testBranchFilter, setTestBranchFilter] = useState<string>('main');
   
   // Run details page state
   const [runDetailsSearchFilter, setRunDetailsSearchFilter] = useState<string>('');
@@ -87,74 +88,63 @@ export function RunOverview({
     loadRuns();
   }, []);
 
-  // Preload the most recent 50 runs immediately after runs are loaded
+  // Background loading is now handled automatically by the dataStore
+  // when getAllRuns() is called and when tests page is accessed
+
+  // Automatically start loading test data when tests tab is accessed
   useEffect(() => {
-    const preloadRecentRuns = async () => {
-      if (runs.length > 0 && !testDataLoaded) {
-        console.log('🚀 Preloading most recent 50 runs in background...');
-        
-        // Get the 50 most recent runs
-        const sortedRuns = [...runs].sort((a, b) => b.creationTime.getTime() - a.creationTime.getTime());
-        const recentRuns = sortedRuns.slice(0, 50);
-        const runNumbers = recentRuns.map(run => run.name.replace('runs/', ''));
-        
-        console.log('📋 Preloading run numbers:');
-        recentRuns.forEach((run, index) => {
-          const runNumber = run.name.replace('runs/', '');
-          console.log(`  ${index + 1}. Run ${runNumber} (created: ${run.creationTime.toISOString()})`);
-        });
-        
-        try {
-          // Fetch and cache the run details in the background
-          await fetchAndCacheRunDetails(runNumbers, (completed, total) => {
-            console.log(`📊 Preload progress: ${completed}/${total} runs cached`);
-          });
-          
-          console.log('✅ Preloading complete! Tests Overview will now be instant.');
-        } catch (error) {
-          console.warn('⚠️ Preloading failed, but will continue normally:', error);
-        }
+    if (activeTab === 'tests' && runs.length > 0) {
+      // Mark that the tests page has been accessed to accelerate background loading
+      markTestsPageAccessed();
+      
+      const analysisState = getAnalysisState();
+      const cachedCount = getCachedRunCount();
+      
+      console.log(`🚀 Tests tab accessed. Cached: ${cachedCount}, Total: ${runs.length}, Loading: ${analysisState.isLoading}, LoadAll: ${analysisState.loadAllRuns}`);
+      
+      // If we have some data, show it immediately
+      if (cachedCount > 0) {
+        console.log('� Showing initial test stats from cached runs...');
+        const initialStats = getTestStatsFromCacheByBranch(testBranchFilter);
+        setTestStats(initialStats);
+        setTestDataLoaded(true);
       }
-    };
-
-    preloadRecentRuns();
-  }, [runs.length, testDataLoaded]);
-
-  // Load test data only when needed and not already loaded
-  useEffect(() => {
-    if (activeTab === 'tests' && runs.length > 0 && !testDataLoaded && testStats.size === 0) {
-      loadTestData(false); // Start with recent runs
+      
+      // ALWAYS start background analysis if not complete and not already loading
+      // This handles both direct navigation to tests page AND normal flow
+      if (!analysisState.loadAllRuns && !analysisState.isLoading) {
+        console.log(`🚀 Starting background analysis of ${cachedCount > 0 ? 'remaining' : 'all'} runs...`);
+        loadTestData(true); // Load ALL runs in background
+      }
     }
-  }, [activeTab, runs.length, testDataLoaded, testStats.size]);
+  }, [activeTab, runs.length, testBranchFilter]);
 
-  // Add dataStore listener to update test stats in real-time
+  // Add dataStore listener to update test stats during and after loading
   useEffect(() => {
     const unsubscribe = addDataStoreListener(() => {
-      // Update test stats from cache whenever dataStore changes
-      const newTestStats = getTestStatsFromCache();
+      // Always update testStats with current cached data (show partial results during loading)
+      const newTestStats = getTestStatsFromCacheByBranch(testBranchFilter);
       
-      if (newTestStats.size > 0) {
-        setTestStats(newTestStats);
-        
-        if (!testDataLoaded && newTestStats.size > 0) {
-          setTestDataLoaded(true);
-        }
+      // Always update testStats, even if empty (to clear the table for branches with no runs)
+      setTestStats(newTestStats);
+      
+      if (!testDataLoaded && newTestStats.size > 0) {
+        setTestDataLoaded(true);
       }
     });
 
-    // Also update immediately if there's already cached data
-    const currentTestStats = getTestStatsFromCache();
+    // Also update immediately with whatever data is available
+    const currentTestStats = getTestStatsFromCacheByBranch(testBranchFilter);
     
-    if (currentTestStats.size > 0) {
-      setTestStats(currentTestStats);
-      
-      if (!testDataLoaded) {
-        setTestDataLoaded(true);
-      }
+    // Always set the stats, even if empty
+    setTestStats(currentTestStats);
+    
+    if (!testDataLoaded && currentTestStats.size > 0) {
+      setTestDataLoaded(true);
     }
 
     return unsubscribe;
-  }, [testDataLoaded, runs.length]);
+  }, [testDataLoaded, runs.length, testBranchFilter]);
 
   // Load run details when selectedRunId changes
   useEffect(() => {
@@ -181,25 +171,31 @@ export function RunOverview({
     try {
       setTestDataError(null);
       
-      // Determine which runs to load - get the most recent by creation time
-      const sortedRuns = [...runs].sort((a, b) => b.creationTime.getTime() - a.creationTime.getTime());
-      const runsToLoad = loadAll ? sortedRuns : sortedRuns.slice(0, 50);
+      // Filter runs to only include main branch and release/* branches
+      const allowedBranchRuns = runs.filter(run => 
+        run.metadata.ghBranch === 'main' || 
+        run.metadata.ghBranch.startsWith('release/')
+      );
       
-      console.log(`Starting to fetch details for ${loadAll ? 'all' : 'most recent'} ${runsToLoad.length} runs using unified data store...`);
+      // Determine which runs to load - get the most recent by creation time
+      const sortedRuns = [...allowedBranchRuns].sort((a, b) => b.creationTime.getTime() - a.creationTime.getTime());
+      const runsToLoad = loadAll ? sortedRuns : sortedRuns;
+      
+      console.log(`Starting to fetch details for ${loadAll ? 'all' : 'most recent'} ${runsToLoad.length} main/release runs using unified data store...`);
       
       // Extract run numbers for the data store
       const runNumbers = runsToLoad.map(run => run.name.replace('runs/', ''));
       
       // Use the data store to fetch/cache run details with progress tracking
       // The dataStore listener will automatically update testStats when data arrives
-      await fetchAndCacheRunDetails(runNumbers, undefined, loadAll);
+      await fetchAndCacheRunDetails(runNumbers, undefined, loadAll, false); // false = background loading
       
-      // Get final stats from the dataStore (the listener will have updated them too)
-      const finalStats = getTestStatsFromCache();
+      // Get final stats from the dataStore filtered by branch (the listener will have updated them too)
+      const finalStats = getTestStatsFromCacheByBranch(testBranchFilter);
       setTestStats(finalStats);
       setTestDataLoaded(true);
       
-      console.log(`Completed fetching details for ${runsToLoad.length} runs. Found ${finalStats.size} unique tests.`);
+      console.log(`Completed fetching details for ${runsToLoad.length} main/release runs. Found ${finalStats.size} unique tests.`);
       
     } catch (err) {
       setTestDataError(err instanceof Error ? err.message : 'Failed to fetch run details');
@@ -269,14 +265,6 @@ export function RunOverview({
           </div>
         );
       },
-    },
-    {
-      accessorKey: 'metadata.petriPassed',
-      header: 'Passed',
-      enableSorting: true,
-      cell: (info) => (
-        <span className="passed-count">{info.getValue<number>()}</span>
-      ),
     },
     {
       accessorKey: 'metadata.petriFailed',
@@ -407,7 +395,7 @@ export function RunOverview({
                   className={`branch-filter-btn ${branchFilter === 'all' ? 'active' : ''}`}
                   onClick={() => setBranchFilter('all')}
                 >
-                  All
+                  all
                 </button>
                 <button
                   className={`branch-filter-btn ${branchFilter === 'main' ? 'active' : ''}`}
@@ -442,30 +430,38 @@ export function RunOverview({
               <div className="header-title-section">
                 <h3>Tests</h3>
               </div>
-              {testStats.size > 0 && (
-                <div className="architecture-filter-section">
-                  <select
-                    value={testArchitectureFilter}
-                    onChange={(e) => setTestArchitectureFilter(e.target.value)}
-                    className="architecture-filter-select"
-                  >
-                    <option value="all">All Architectures</option>
-                    {Array.from(new Set(Array.from(testStats.values()).map(test => test.testName.split('/')[0]))).sort().map(arch => (
-                      <option key={arch} value={arch}>
-                        {arch}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {!getAnalysisState().loadAllRuns && getCachedRunCount() < runs.length && (
-                <button 
-                  className="load-all-btn"
-                  onClick={() => loadTestData(true)}
-                  disabled={getAnalysisState().isLoading}
+              <div className="branch-filter-buttons">
+                <button
+                  className={`branch-filter-btn ${testBranchFilter === 'main' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTestBranchFilter('main');
+                    // Immediately update display with current cached data for this branch
+                    const branchStats = getTestStatsFromCacheByBranch('main');
+                    setTestStats(branchStats);
+                  }}
                 >
-                  Analyze all runs
+                  main
                 </button>
+                <button
+                  className={`branch-filter-btn ${testBranchFilter === 'release/2505' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTestBranchFilter('release/2505');
+                    // Immediately update display with current cached data for this branch
+                    const branchStats = getTestStatsFromCacheByBranch('release/2505');
+                    setTestStats(branchStats);
+                  }}
+                >
+                  release/2505
+                </button>
+              </div>
+              {getAnalysisState().isLoading && (
+                <div className="analysis-progress">
+                  <div className="loading-spinner"></div>
+                  <span>Analyzing {getCachedRunCount()} of {runs.filter(run => 
+                    run.metadata.ghBranch === 'main' || 
+                    run.metadata.ghBranch.startsWith('release/')
+                  ).length} main/release runs...</span>
+                </div>
               )}
             </div>
             <div className="table-controls">
@@ -477,8 +473,8 @@ export function RunOverview({
               />
               <div className="results-count">
                 {testStats.size} tests
-                {!getAnalysisState().loadAllRuns && getCachedRunCount() < runs.length && (
-                  <span> • Analyzed {getCachedRunCount()} of {runs.length} runs</span>
+                {getAnalysisState().isLoading && (
+                  <span className="partial-analysis-note"> • Partial results</span>
                 )}
               </div>
             </div>
@@ -598,9 +594,7 @@ export function RunOverview({
           processedRuns={getCachedRunCount()}
           totalRuns={getAnalysisState().targetRunCount || runs.length}
           loadAllRuns={getAnalysisState().loadAllRuns}
-          onLoadAll={() => loadTestData(true)}
           searchFilter={testSearchFilter}
-          architectureFilter={testArchitectureFilter}
           onTestClick={onTestClick}
         />
       )}

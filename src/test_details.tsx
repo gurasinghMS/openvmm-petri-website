@@ -9,12 +9,8 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { 
-  getAllRuns, 
   getTestResultsFromCache, 
-  getUncachedRunsForTest, 
-  fetchAndCacheRunDetails,
-  addDataStoreListener,
-  getCachedRunCount
+  addDataStoreListener
 } from './dataStore';
 import './styles.css';
 
@@ -45,74 +41,23 @@ export function TestDetails({
   const [testRuns, setTestRuns] = useState<TestRunResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [processedRuns, setProcessedRuns] = useState<number>(0);
-  const [totalRuns, setTotalRuns] = useState<number>(0);
-  const [loadAllRuns, setLoadAllRuns] = useState<boolean>(false);
+
   
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'createdOn', desc: true } // Default sort by creation time, newest first
   ]);
 
   useEffect(() => {
-    // Reset to show only cached results when test name changes
-    setLoadAllRuns(false);
-  }, [testName]);
-
-  useEffect(() => {
-    const loadTestRuns = async (loadAll: boolean = false) => {
+    const loadTestRuns = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Get all runs to know the total count
-        const allRuns = await getAllRuns();
-        setTotalRuns(allRuns.length);
-        
-        // First, get any cached test results immediately
+        // Get cached test results (only from main/release branches)
         const cachedResults = getTestResultsFromCache(testName);
         setTestRuns(cachedResults);
-        setProcessedRuns(cachedResults.length);
         
-        // If we have cached results, show them immediately
-        if (cachedResults.length > 0) {
-          console.log(`🎯 Found ${cachedResults.length} cached results for test: ${testName}`);
-        }
-        
-        if (!loadAll) {
-          // Show only cached results (from the initial 50 runs analysis)
-          console.log(`📊 Showing test results from ${cachedResults.length} already analyzed runs`);
-          setLoading(false);
-          return;
-        }
-        
-        // Get runs that still need to be processed for "analyze all" mode
-        const uncachedRuns = getUncachedRunsForTest();
-        
-        if (uncachedRuns.length === 0) {
-          // All runs are cached, we're done
-          console.log(`✅ All run data for test "${testName}" was already cached - instant load!`);
-          setLoadAllRuns(true);
-          setLoading(false);
-          return;
-        }
-        
-        console.log(`🔍 Need to fetch ${uncachedRuns.length} more runs for test: ${testName} (${cachedResults.length} already cached)`);
-        console.log(`📦 Will fetch in batches of 25 runs`);
-        
-        // Fetch the remaining runs in batches
-        await fetchAndCacheRunDetails(uncachedRuns, (completed) => {
-          // Update progress
-          setProcessedRuns(cachedResults.length + completed);
-          
-          // Get updated results from cache as new data comes in
-          const updatedResults = getTestResultsFromCache(testName);
-          setTestRuns(updatedResults);
-        });
-        
-        // Final update with all results
-        const finalResults = getTestResultsFromCache(testName);
-        setTestRuns(finalResults);
-        setLoadAllRuns(true);
+        console.log(`🎯 Found ${cachedResults.length} cached results for test: ${testName} from main/release branches`);
         
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load test run data');
@@ -121,7 +66,7 @@ export function TestDetails({
       }
     };
 
-    loadTestRuns(loadAllRuns);
+    loadTestRuns();
     
     // Subscribe to data store changes to get real-time updates
     const unsubscribe = addDataStoreListener(() => {
@@ -131,7 +76,7 @@ export function TestDetails({
     });
     
     return unsubscribe;
-  }, [testName, loadAllRuns]);
+  }, [testName]);
 
   // Define columns for the test runs table
   const columns = useMemo<ColumnDef<TestRunResult>[]>(() => [
@@ -224,7 +169,8 @@ export function TestDetails({
     debugTable: false,
   });
 
-  if (loading) {
+  // If loading and no test runs yet, show initial loading screen
+  if (loading && testRuns.length === 0) {
     // Parse the test name to separate architecture and test name
     const testParts = testName.split('/');
     const architecture = testParts[0] || '';
@@ -253,27 +199,7 @@ export function TestDetails({
           </div>
         </div>
         <div className="test-details-loading">
-          {loadAllRuns ? (
-            <>
-              Loading all test run details... ({processedRuns}/{totalRuns} runs processed)
-              {testRuns.length > 0 && (
-                <div className="test-details-progress">
-                  Found {testRuns.length} runs containing this test so far
-                  <br />
-                  <small>Using cached data where available, fetching remaining runs in batches of 25</small>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              Loading test run details from analyzed runs...
-              {testRuns.length > 0 && (
-                <div className="test-details-progress">
-                  Found {testRuns.length} runs containing this test from {getCachedRunCount()} analyzed runs
-                </div>
-              )}
-            </>
-          )}
+          Loading test run details from analyzed runs...
         </div>
       </div>
     );
@@ -287,7 +213,7 @@ export function TestDetails({
 
     return (
       <div className="test-details-container">
-        <div className="test-details-header">
+        <div className="run-overview-header">
           <div className="header-title-section">
             <button className="back-button" onClick={onBack} title="Back to Tests Overview">
               ← Back
@@ -320,7 +246,7 @@ export function TestDetails({
 
     return (
       <div className="test-details-container">
-        <div className="test-details-header">
+        <div className="run-overview-header">
           <div className="header-title-section">
             <button className="back-button" onClick={onBack} title="Back to Tests Overview">
               ← Back
@@ -358,7 +284,7 @@ export function TestDetails({
 
   return (
     <div className="test-details-container">
-      <div className="test-details-header">
+      <div className="run-overview-header">
         <div className="header-title-section">
           <button className="back-button" onClick={onBack} title="Back to Tests Overview">
             ← Back
@@ -367,15 +293,6 @@ export function TestDetails({
             <div className="test-architecture">{architecture}</div>
             <div className="test-name-title">{testNameOnly}</div>
           </div>
-          {!loadAllRuns && totalRuns > getCachedRunCount() && (
-            <button 
-              className="load-all-btn"
-              onClick={() => setLoadAllRuns(true)}
-              disabled={loading}
-            >
-              Analyze all runs
-            </button>
-          )}
         </div>
         <div className="header-search-section">
           <input
@@ -385,11 +302,6 @@ export function TestDetails({
             onChange={(e) => onSearchFilterChange(e.target.value)}
             className="search-input"
           />
-          <div className="results-count">
-            {!loadAllRuns && totalRuns > getCachedRunCount() && (
-              <span> From {getCachedRunCount()} of {totalRuns} analyzed runs</span>
-            )}
-          </div>
         </div>
       </div>
       

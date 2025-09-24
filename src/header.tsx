@@ -4,14 +4,14 @@ import './styles.css';
 interface HeaderProps {
   activeTab: 'runs' | 'tests';
   setActiveTab: (tab: 'runs' | 'tests') => void;
-  currentView: 'overview' | 'details' | 'test-details' | 'test-logs';
+  currentView: 'overview' | 'run-details' | 'test-details' | 'test-logs';
   onBackToOverview?: () => void;
 }
 
 // Header component with dark grey background and white text
 export function Header({ activeTab, setActiveTab, currentView, onBackToOverview }: HeaderProps): React.JSX.Element {
   const handleTabClick = (tab: 'runs' | 'tests') => {
-    if ((currentView === 'details' || currentView === 'test-details' || currentView === 'test-logs') && onBackToOverview) {
+    if ((currentView === 'run-details' || currentView === 'test-details' || currentView === 'test-logs') && onBackToOverview) {
       // If we're in details view, go back to overview first
       onBackToOverview();
     }
@@ -21,7 +21,7 @@ export function Header({ activeTab, setActiveTab, currentView, onBackToOverview 
 
   // Don't highlight any tab when in details views
   const getTabClass = (tab: 'runs' | 'tests') => {
-    if (currentView === 'details' || currentView === 'test-details') {
+    if (currentView === 'run-details' || currentView === 'test-details') {
       return 'tab-btn'; // No active class when in details view
     }
     return `tab-btn ${activeTab === tab ? 'active' : ''}`;

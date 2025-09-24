@@ -86,30 +86,16 @@ export function AdvancedSearch({ query, onQueryChange, onToggleAdvanced }: Advan
   };
 
   return (
-    <div className="advanced-search-container">
-      <div className="search-header">
-        <h4>Advanced Search</h4>
-        <button
-          type="button"
-          className="toggle-search-button"
-          onClick={onToggleAdvanced}
-          title="Switch to simple search"
-        >
-          Simple Search
-        </button>
-      </div>
-      
+    <div className="advanced-search-container">      
       <div className="query-builder-container">
         <div className="combinator-section">
-          <label>Match: </label>
-          <button
-            type="button"
+          <div
             className={`combinator-button ${query.combinator.toLowerCase()}`}
             onClick={toggleCombinator}
             title="Click to toggle between AND/OR"
           >
-            {query.combinator === 'AND' ? 'ALL' : 'ANY'} of the following conditions
-          </button>
+            {query.combinator === 'AND' ? 'Match ALL' : 'Match ANY'}
+          </div>
         </div>
 
         <div className="rules-container">
@@ -171,18 +157,27 @@ export function AdvancedSearch({ query, onQueryChange, onToggleAdvanced }: Advan
                 title="Remove this rule"
               >
                 ✕
+              </button> 
+              <button
+                type="button"
+                onClick={addRule}
+                className="add-rule-button"
+              >
+                +
               </button>
             </div>
           ))}
-
-          <button
-            type="button"
-            onClick={addRule}
-            className="add-rule-button"
-          >
-            + Add Rule
-          </button>
         </div>
+      </div>
+      <div className="search-header">
+        <button
+          type="button"
+          className="toggle-search-button"
+          onClick={onToggleAdvanced}
+          title="Switch to simple search"
+        >
+          Simple Search
+        </button>
       </div>
     </div>
   );

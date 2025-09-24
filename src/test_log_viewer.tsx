@@ -7,7 +7,6 @@ import {
   flexRender,
   SortingState,
 } from '@tanstack/react-table';
-import { AdvancedSearch, evaluateQuery, defaultQuery, type SearchGroup } from './AdvancedSearch';
 import './styles.css';
 
 interface LogEntry {
@@ -44,8 +43,6 @@ export function TestLogViewer({
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [selectedLogIndex, setSelectedLogIndex] = useState<number | null>(null);
   const [modalContent, setModalContent] = useState<{ type: 'image' | 'text'; content: string; url: string } | null>(null);
-  const [isAdvancedSearch, setIsAdvancedSearch] = useState<boolean>(false);
-  const [advancedQuery, setAdvancedQuery] = useState<SearchGroup>(defaultQuery);
   const [sorting, setSorting] = useState<SortingState>([]);
 
   // Format test name for display (remove path prefixes and convert __ to ::)
@@ -153,24 +150,17 @@ export function TestLogViewer({
     loadTestLogs();
   }, [runId, testName, jobName]);
 
-  // Filter logs based on search (simple or advanced)
+  // Filter logs based on search
   useEffect(() => {
-    if (isAdvancedSearch) {
-      // Advanced search using query builder
-      const filtered = logEntries.filter(log => evaluateQuery(log, advancedQuery));
-      setFilteredLogs(filtered);
-    } else {
-      // Simple search using the existing logic
-      if (!searchFilter.trim()) {
-        setFilteredLogs(logEntries);
-        return;
-      }
-
-      const tokens = tokenizeSearchQuery(searchFilter);
-      const filtered = logEntries.filter(log => rowMatchesQuery(log, tokens));
-      setFilteredLogs(filtered);
+    if (!searchFilter.trim()) {
+      setFilteredLogs(logEntries);
+      return;
     }
-  }, [searchFilter, logEntries, isAdvancedSearch, advancedQuery]);
+
+    const tokens = tokenizeSearchQuery(searchFilter);
+    const filtered = logEntries.filter(log => rowMatchesQuery(log, tokens));
+    setFilteredLogs(filtered);
+  }, [searchFilter, logEntries]);
 
   // Keyboard handling for search and row selection
   useEffect(() => {
@@ -194,8 +184,6 @@ export function TestLogViewer({
       if (e.key === 'Escape') {
         if (modalContent) {
           closeModal();
-        } else if (isAdvancedSearch) {
-          setAdvancedQuery(defaultQuery);
         } else if (searchFilter) {
           setSearchFilter('');
         } else if (selectedLogIndex !== null) {
@@ -223,7 +211,7 @@ export function TestLogViewer({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('copy', handleCopy);
     };
-  }, [searchFilter, selectedLogIndex, filteredLogs, modalContent, isAdvancedSearch]);
+  }, [searchFilter, selectedLogIndex, filteredLogs, modalContent]);
 
   // Handle URL hash for row selection
   useEffect(() => {
@@ -483,20 +471,6 @@ export function TestLogViewer({
     setModalContent(null);
   };
 
-  const handleToggleAdvancedSearch = () => {
-    setIsAdvancedSearch(!isAdvancedSearch);
-    // Reset search when switching modes
-    if (!isAdvancedSearch) {
-      setSearchFilter('');
-    } else {
-      setAdvancedQuery(defaultQuery);
-    }
-  };
-
-  const handleAdvancedQueryChange = (query: SearchGroup) => {
-    setAdvancedQuery(query);
-  };
-
   // Define columns for the sortable table
   const columns = useMemo<ColumnDef<LogEntry>[]>(() => [
     {
@@ -593,44 +567,6 @@ export function TestLogViewer({
     enableSorting: true,
   });
 
-  if (loading) {
-    return (
-      <div className="run-overview">
-        <div className="run-overview-header">
-          <div className="header-left-section">
-            <button 
-              className="back-button dark-grey"
-              onClick={onBack}
-              title="Back to run details"
-            >
-              ← Run Details
-            </button>
-            <div className="header-title-section">
-              <h3>Test Logs</h3>
-              <div className="breadcrumb">
-                <span className="run-info">Run {runId}</span>
-                {runDate && (
-                  <span className="run-date"> • {runDate.toLocaleDateString()}</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="header-right-section">
-            <button
-              onClick={() => window.open(githubUrl, '_blank')}
-              className="github-button"
-            >
-              GitHub Run
-            </button>
-          </div>
-        </div>
-        <div className="run-overview-content">
-          <div className="loading-message">Loading test logs...</div>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="run-overview">
@@ -654,12 +590,33 @@ export function TestLogViewer({
             </div>
           </div>
           <div className="header-right-section">
-            <button
-              onClick={() => window.open(githubUrl, '_blank')}
-              className="github-button"
-            >
-              GitHub Run
-            </button>
+            {/* Search Interface moved to header */}
+            <div className="search-section header-search">
+              <div className="simple-search-container">
+                <div className="search-header">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search logs..."
+                    value=""
+                    disabled
+                  />
+                  <button
+                    type="button"
+                    className="toggle-search-button"
+                    disabled
+                  >
+                    Advanced Search
+                  </button>
+                  <button
+                    onClick={() => window.open(githubUrl, '_blank')}
+                    className="github-button"
+                  >
+                    GitHub Run
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div className="run-overview-content">
@@ -690,25 +647,7 @@ export function TestLogViewer({
           </div>
         </div>
         <div className="header-right-section">
-          <button
-            onClick={() => window.open(githubUrl, '_blank')}
-            className="github-button"
-          >
-            GitHub Run
-          </button>
-        </div>
-      </div>
-
-      <div className="run-overview-content">
-        {/* Search Interface */}
-        <div className="search-section">
-          {isAdvancedSearch ? (
-            <AdvancedSearch
-              query={advancedQuery}
-              onQueryChange={handleAdvancedQueryChange}
-              onToggleAdvanced={handleToggleAdvancedSearch}
-            />
-          ) : (
+          <div className="search-section header-search">
             <div className="simple-search-container">
               <div className="search-header">
                 <input
@@ -718,25 +657,17 @@ export function TestLogViewer({
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
                 />
-                <button
-                  type="button"
-                  className="toggle-search-button"
-                  onClick={handleToggleAdvancedSearch}
-                  title="Switch to advanced search"
-                >
-                  Advanced Search
-                </button>
-                <div className="search-tips">
-                    Simple Search Tips: Use <code>severity:ERROR</code>, or <code>message:failed</code> for targeted searches
-                </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
+      </div>
+
+      <div className="run-overview-content">
 
         {filteredLogs.length === 0 && !loading ? (
           <div className="no-logs-message">
-            {(isAdvancedSearch || searchFilter) ? 'No logs match the current search criteria.' : 'No logs found for this test.'}
+            {searchFilter ? 'No logs match the current search criteria.' : 'No logs found for this test.'}
           </div>
         ) : (
           <div className="table-container">

@@ -153,20 +153,12 @@ export async function fetchRunData(): Promise<RunData[]> {
 
     console.log('Done fetching and parsing run data');
     // Duplicate the runs array to simulate a large dataset
-    const duplicatedRuns = [...runs, ...runs, ...runs, ...runs, ...runs, ...runs, ...runs, ...runs, ...runs, ...runs]; // 10x duplication
-    return duplicatedRuns;
+    return runs;
   } catch (error) {
     console.error('Error fetching run data:', error);
     throw error;
   }
 }
-
-
-
-
-
-
-
 
 // Function to parse detailed run data from XML
 function parseRunDetails(xmlText: string, runNumber: string): RunDetails {

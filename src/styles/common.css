@@ -17,7 +17,6 @@
     position: sticky;
     background-color: white;
     z-index: 997;
-    border-bottom: 1px solid #e0e0e0;
     top: 0;
     height: 4rem;
     min-width: 56rem;
@@ -30,17 +29,18 @@
 }
 
 .common-filter-btn {
-    padding: 0.75rem 1.5rem;
+    font-size: 0.87rem;
+    padding: 0.45rem 1rem;
     border: none;
     background: transparent;
     color: #747474;
     cursor: pointer;
     border-radius: 8px;
-    font-size: 1.04rem;
     font-weight: 600;
     user-select: none;
     position: relative;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    align-items: center;
 
 }
 

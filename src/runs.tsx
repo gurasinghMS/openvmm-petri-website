@@ -304,9 +304,9 @@ export function Runs(): React.JSX.Element {
                     const widthMap: Record<string, number> = {
                       name: 100,        // Run
                       creationTime: 170, // Created
-                      status: 70,       // Status
-                      failed: 70,       // Failed
-                      total: 70,        // Total
+                      status: 60,       // Status
+                      failed: 60,       // Failed
+                      total: 60,        // Total
                       ghRun: 100,       // GH Run (custom id below)
                     };
                     const w = widthMap[header.column.id];
@@ -397,9 +397,9 @@ export function Runs(): React.JSX.Element {
                             const widthMap: Record<string, number> = {
                               name: 100,
                               creationTime: 170,
-                              status: 70,
-                              failed: 70,
-                              total: 70,
+                              status: 60,
+                              failed: 60,
+                              total: 60,
                               ghRun: 100,
                             };
                             const w = widthMap[cell.column.id];
@@ -563,7 +563,7 @@ const createColumns = (): ColumnDef<RunData>[] => {
                 textOverflow: 'ellipsis',
                 whiteSpace: 'normal',
                 lineHeight: '1.1rem',
-                maxHeight: '2.2rem',
+                maxHeight: '2.1rem',
               }}
             >
               {fullText}
@@ -643,12 +643,6 @@ export function RunsHeader({
             onClick={() => setBranchFilter('main')}
           >
             main
-          </button>
-          <button
-            className={`common-filter-btn ${branchFilter === 'release/2505' ? 'active' : ''}`}
-            onClick={() => setBranchFilter('release/2505')}
-          >
-            release/2505
           </button>
         </div>
       </div>

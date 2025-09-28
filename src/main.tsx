@@ -25,8 +25,8 @@ function Content() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/runs" replace />} />
-  <Route path="runs" element={<Runs />} />
-  <Route path="tests" element={<Tests />} />
+      <Route path="runs" element={<Runs />} />
+      <Route path="tests" element={<Tests />} />
     </Routes>
   );
 }

@@ -177,8 +177,8 @@ export function TestDetails({
     const testNameOnly = testParts[1] || testName;
 
     return (
-      <div className="test-details-container">
-        <div className="test-details-header">
+      <div className="tests-container">
+        <div className="tests-header">
           <div className="header-title-section">
             <button className="back-button" onClick={onBack} title="Back to Tests Overview">
               ← Back
@@ -198,7 +198,7 @@ export function TestDetails({
             />
           </div>
         </div>
-        <div className="test-details-loading">
+        <div className="tests-loading">
           Loading test run details from analyzed runs...
         </div>
       </div>
@@ -212,7 +212,7 @@ export function TestDetails({
     const testNameOnly = testParts[1] || testName;
 
     return (
-      <div className="test-details-container">
+      <div className="tests-container">
         <div className="run-overview-header">
           <div className="header-title-section">
             <button className="back-button" onClick={onBack} title="Back to Tests Overview">
@@ -233,7 +233,7 @@ export function TestDetails({
             />
           </div>
         </div>
-        <div className="test-details-error">Error: {error}</div>
+        <div className="tests-error">Error: {error}</div>
       </div>
     );
   }
@@ -245,7 +245,7 @@ export function TestDetails({
     const testNameOnly = testParts[1] || testName;
 
     return (
-      <div className="test-details-container">
+      <div className="tests-container">
         <div className="run-overview-header">
           <div className="header-title-section">
             <button className="back-button" onClick={onBack} title="Back to Tests Overview">
@@ -266,7 +266,7 @@ export function TestDetails({
             />
           </div>
         </div>
-        <div className="test-details-empty">
+        <div className="tests-empty">
           No runs found containing test: {testName}
         </div>
       </div>
@@ -283,7 +283,7 @@ export function TestDetails({
   const testNameOnly = testParts[1] || testName;
 
   return (
-    <div className="test-details-container">
+    <div className="tests-container">
       <div className="run-overview-header">
         <div className="header-title-section">
           <button className="back-button" onClick={onBack} title="Back to Tests Overview">
@@ -305,8 +305,8 @@ export function TestDetails({
         </div>
       </div>
       
-      <div className="test-details-content">
-        <div className="test-details-summary">
+      <div className="tests-content">
+        <div className="tests-summary">
           <div className="summary-stats">
             <span className="stat-item">
               <span className="stat-label">Total Runs:</span>

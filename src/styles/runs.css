@@ -1,0 +1,215 @@
+.run-overview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    position: sticky;
+    background-color: white;
+    z-index: 997;
+    border-bottom: 1px solid #e0e0e0;
+    top: 0;
+    height: 4rem;
+}
+
+.runs-header-left-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 2rem;
+}
+
+.runs-header-title-section h3 {
+    color: #000000;
+    font-size: 1.44rem;
+    font-weight: 600;
+    vertical-align: center;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.runs-header-right-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.results-count {
+    font-size: 1rem;
+    color: #666;
+    white-space: nowrap;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+/* =============== Table Styles =============== */
+.table-row:hover {
+    background-color: rgba(25, 118, 210, 0.04);
+}
+
+.run-name-link {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #1976d2;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.run-name-link:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+    text-decoration: none;
+}
+
+.passed-count {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2e7d32;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.failed-count {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #d32f2f;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.total-count {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1976d2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.created-date {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2c3e50;
+}
+
+.status-cell {
+    text-align: center;
+}
+
+.status-pass {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #27ae60;
+    border-radius: 50%;
+}
+
+.status-fail {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #e74c3c;
+    border-radius: 50%;
+}
+
+.status-dot {
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.status-dot.status-pass {
+    color: #27ae60;
+    width: auto;
+    height: auto;
+    background-color: transparent;
+    border-radius: 0;
+}
+
+.status-dot.status-fail {
+    color: #e74c3c;
+    width: auto;
+    height: auto;
+    background-color: transparent;
+    border-radius: 0;
+}
+
+.branch-name {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 1rem;
+    color: #000000;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    overflow: visible;
+    word-break: break-word;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.pr-link {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.pr-link:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+    text-decoration: none;
+}
+
+.pr-cell {
+    min-width: 100px;
+    max-width: 450px;
+}
+
+.pr-combined-link {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1976d2;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: block;
+    word-break: break-word;
+}
+
+.pr-combined-link:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+    text-decoration: none;
+}
+
+.pr-number-link {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.pr-number-link:hover {
+    color: #1565c0;
+    text-decoration: underline;
+}
+
+.no-pr {
+    color: #9e9e9e;
+    font-style: italic;
+}

@@ -1,0 +1,96 @@
+/* Header component styles */
+.header-bar {
+  background-color: #333333;
+  padding: 0.2rem 2rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 3rem;
+  width: 100%;
+  min-width: 60rem;
+  box-sizing: border-box;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  min-width: max-content;
+  gap: 1rem;
+}
+
+.header-title {
+  color: white;
+  margin: 0;
+  padding: 0.8rem;
+  font-size: 1.14rem;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+  min-width: max-content;
+}
+
+.header-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.1rem;
+  min-width: max-content;
+}
+
+.header-button {
+  background: none;
+  border: none;
+  color: white;
+  font-family: Arial, sans-serif;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  text-decoration: none;
+  display: inline-block;
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+}
+
+.header-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tab-navigation {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: 0.5rem;
+}
+
+.header-tab {
+  font-family: Arial, sans-serif;
+  padding: 0.8rem 1.5rem;
+  background: #333333;
+  /* Match header background exactly */
+  color: #b0b0b0;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 1.04rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  width: max-content;
+  display: flex;
+  align-items: center;
+}
+
+.header-tab.active {
+  background: #333333;
+  /* Keep same background as header */
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+  width: max-content;
+}
+
+.header-tab:hover {
+  background: #333333;
+  /* Keep same background as header */
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+  width: max-content;
+}

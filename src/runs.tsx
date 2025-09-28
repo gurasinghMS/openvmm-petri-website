@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import './styles/runs.css';
 import './styles/common.css';
 import { fetchRunData, RunData } from './fetch';
+import { Hamburger } from './hamburger';
 
 export function Runs(): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
@@ -232,10 +233,10 @@ export function Runs(): React.JSX.Element {
         } else {
           // Window already at bottom; push into container if possible.
           const innerRemaining = container.scrollHeight - container.clientHeight - container.scrollTop;
-            if (innerRemaining > 0) {
-              e.preventDefault();
-              container.scrollTop = container.scrollTop + Math.min(deltaY, innerRemaining);
-            }
+          if (innerRemaining > 0) {
+            e.preventDefault();
+            container.scrollTop = container.scrollTop + Math.min(deltaY, innerRemaining);
+          }
         }
       } else { // deltaY < 0
         // UP: table priority
@@ -264,8 +265,8 @@ export function Runs(): React.JSX.Element {
       };
     };
 
-  // Need passive:false because we may call preventDefault when redistributing delta.
-  window.addEventListener('wheel', onWindowWheel, { passive: false });
+    // Need passive:false because we may call preventDefault when redistributing delta.
+    window.addEventListener('wheel', onWindowWheel, { passive: false });
     return () => {
       window.removeEventListener('wheel', onWindowWheel);
     };
@@ -626,8 +627,9 @@ export function RunsHeader({
   return (
     <>
       <div className="runs-header-left-section">
-        <div className="runs-header-title-section">
-          <h3>Runs</h3>
+        <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Hamburger />
+          <h3 style={{ margin: 0 }}>Runs</h3>
         </div>
         <div className="common-filter-buttons">
           <button

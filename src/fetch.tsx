@@ -35,41 +35,43 @@ export interface ParsedRunResult {
   runs: RunData[];
 }
 
-// Function to fetch multiple PR titles in parallel
-async function fetchPRTitles(prNumbers: string[]): Promise<Map<string, string>> {
+// ============================================
+// PR Title Fetching & Caching Helpers
+// ============================================
+
+import { QueryClient } from '@tanstack/react-query';
+
+const PR_TITLE_CACHE_MS = 15 * 60 * 1000; // 15 minutes
+
+/** Fetch a single PR title from GitHub. Returns null if unavailable or rate-limited. */
+async function fetchSinglePRTitle(prNumber: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://api.github.com/repos/microsoft/openvmm/pulls/${prNumber}`);
+    if (response.status === 403) {
+      // Likely rate limited – treat as missing but keep cached null to avoid hammering.
+      return null;
+    }
+    if (response.ok) {
+      const prData = await response.json();
+      return typeof prData.title === 'string' ? prData.title : null;
+    }
+  } catch { /* swallow network errors; null indicates unknown */ }
+  return null;
+}
+
+/**
+ * Legacy bulk fetch fallback when no QueryClient is passed (kept for compatibility).
+ * Not used when a QueryClient is provided.
+ */
+async function fetchPRTitlesBulk(prNumbers: string[]): Promise<Map<string, string>> {
   const prTitles = new Map<string, string>();
-
-  // Make all API calls in parallel
-  const promises = prNumbers.map(async (prNumber) => {
-    try {
-      const response = await fetch(`https://api.github.com/repos/microsoft/openvmm/pulls/${prNumber}`);
-
-      if (response.status === 403) {
-        return null;
-      }
-
-      if (response.ok) {
-        const prData = await response.json();
-        if (prData.title) {
-          return { prNumber, title: prData.title };
-        }
-      }
-    } catch (error) { }
-    return null;
-  });
-
-  // Wait for all requests to complete and filter out nulls
+  const promises = prNumbers.map(prNumber => fetchSinglePRTitle(prNumber).then(title => ({ prNumber, title })));
   const results = await Promise.allSettled(promises);
-
-  // Process all results, including those that were rejected
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled' && result.value) {
-      prTitles.set(result.value.prNumber, result.value.title);
-    } else if (result.status === 'rejected') {
-      console.warn(`Promise rejected for PR #${prNumbers[index]}:`, result.reason);
+  results.forEach(r => {
+    if (r.status === 'fulfilled' && r.value.title) {
+      prTitles.set(r.value.prNumber, r.value.title!);
     }
   });
-
   return prTitles;
 }
 
@@ -123,7 +125,7 @@ function parseRunData(xmlText: string): ParsedRunResult {
 }
 
 // Main export function - fetches and returns parsed run data
-export async function fetchRunData(): Promise<RunData[]> {
+export async function fetchRunData(queryClient?: QueryClient): Promise<RunData[]> {
   try {
     console.log('Fetching run data from Azure Blob Storage')
     const url = 'https://openvmmghtestresults.blob.core.windows.net/results?restype=container&comp=list&showonly=files&include=metadata&prefix=runs/';
@@ -139,16 +141,36 @@ export async function fetchRunData(): Promise<RunData[]> {
       .map(run => run.metadata.ghPr)
       .filter((pr): pr is string => pr !== undefined);
 
-    // Fetch PR titles if we have any PRs
     if (prNumbers.length > 0) {
-      const prTitles = await fetchPRTitles(prNumbers);
-
-      // Add PR titles to the run data
-      runs.forEach(run => {
-        if (run.metadata.ghPr && prTitles.has(run.metadata.ghPr)) {
-          run.metadata.prTitle = prTitles.get(run.metadata.ghPr);
-        }
-      });
+      if (queryClient) {
+        // Use per-PR cached queries (15 min) to avoid redundant network calls across navigations.
+        const unique = Array.from(new Set(prNumbers));
+        const entries = await Promise.all(unique.map(async pr => {
+          const title = await queryClient.ensureQueryData<string | null>({
+            queryKey: ['prTitle', pr],
+            queryFn: () => fetchSinglePRTitle(pr),
+            staleTime: PR_TITLE_CACHE_MS,
+            gcTime: PR_TITLE_CACHE_MS,
+          });
+          return [pr, title] as const;
+        }));
+        const titleMap = new Map<string, string | null>(entries);
+        runs.forEach(run => {
+          const pr = run.metadata.ghPr;
+          if (pr && titleMap.has(pr)) {
+            const t = titleMap.get(pr);
+            if (t) run.metadata.prTitle = t;
+          }
+        });
+      } else {
+        // Fallback legacy bulk fetch (no caching layer available here)
+        const prTitles = await fetchPRTitlesBulk(prNumbers);
+        runs.forEach(run => {
+          if (run.metadata.ghPr && prTitles.has(run.metadata.ghPr)) {
+            run.metadata.prTitle = prTitles.get(run.metadata.ghPr);
+          }
+        });
+      }
     }
 
     console.log('Done fetching and parsing run data');

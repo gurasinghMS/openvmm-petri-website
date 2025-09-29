@@ -13,15 +13,22 @@ import './styles/common.css';
 import { fetchRunData, RunData } from './fetch';
 import { Hamburger } from './hamburger';
 import { VirtualizedRunsTable } from './VirtualizedTable.tsx';
+import { useNavigate, Link } from 'react-router-dom';
 
 export function Runs(): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const navigate = useNavigate();
 
   // Query client should allow us to cache and reuse the data.
   const queryClient = useQueryClient();
   useEffect(() => {
-    queryClient.fetchQuery({ queryKey: ['runs'], queryFn: fetchRunData }).then(setRuns);
+    queryClient.fetchQuery({
+      queryKey: ['runs'],
+      queryFn: () => fetchRunData(queryClient),
+      staleTime: 3 * 60 * 1000, // runs list can revalidate every 3 minutes
+      gcTime: 5 * 60 * 1000,
+    }).then(setRuns);
   }, [queryClient]);
 
   // Default sort by creation time, newest first
@@ -38,7 +45,7 @@ export function Runs(): React.JSX.Element {
     return runs.filter(run => run.metadata.ghBranch === branchFilter);
   }, [runs, branchFilter]);
 
-  const columns = useMemo(() => createColumns(), []);
+  const columns = useMemo(() => createColumns((runId: string) => navigate(`/runs/${runId}`)), [navigate]);
 
   const table = useReactTable({
     data: filteredRuns,
@@ -56,8 +63,6 @@ export function Runs(): React.JSX.Element {
     enableSortingRemoval: false,
     debugTable: false,
   });
-
-
   return (
     <div className="common-page-display">
       <div className="common-page-header">
@@ -75,7 +80,7 @@ export function Runs(): React.JSX.Element {
 }
 
 // Define the columns for the runs table
-const createColumns = (): ColumnDef<RunData>[] => {
+const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[] => {
   return [
     {
       accessorKey: 'name',
@@ -88,7 +93,7 @@ const createColumns = (): ColumnDef<RunData>[] => {
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              // TODO: This should just update the underlying path of the application!
+              onRunClick(runId);
             }}
             className="run-name-link"
           >
@@ -272,7 +277,9 @@ export function RunsHeader({
       <div className="runs-header-left-section">
         <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Hamburger />
-          <h3 style={{ margin: 0 }}>Runs</h3>
+          <h3 style={{ margin: 0 }}>
+            <Link to="/runs" className="common-page-path" style={{ color: 'inherit' }}>Runs</Link>
+          </h3>
         </div>
         <div className="common-filter-buttons">
           <button

@@ -164,3 +164,13 @@
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.9rem;
 }
+
+/* Breadcrumb / page path link */
+.common-page-path {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.common-page-path:hover {
+    text-decoration: underline;
+}

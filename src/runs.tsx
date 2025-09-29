@@ -128,8 +128,8 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
       cell: (info) => {
         const status = info.getValue<string>();
         return (
-          <div className="status-cell">
-            <span className={status === 'passed' ? 'status-pass' : 'status-fail'}>
+          <div className="common-status-cell">
+            <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
             </span>
           </div>
         );

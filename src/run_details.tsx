@@ -52,7 +52,7 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
           className="common-search-input"
         />
         <span className="results-count" title={`${resultCount} of ${totalCount} tests visible`}>
-          {resultCount}/{totalCount} tests
+          {resultCount} tests
         </span>
       </div>
     </>
@@ -141,9 +141,8 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
       cell: (info) => {
         const status = info.getValue<string>();
         return (
-          <div className="status-cell">
-            <span className={`status-dot ${status === 'passed' ? 'status-pass' : 'status-fail'}`}>
-              ●
+          <div className="common-status-cell">
+            <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
             </span>
           </div>
         );
@@ -176,12 +175,6 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
     enableSortingRemoval: false,
   });
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="loading-message">Loading run details...</div>
-    );
-  }
 
   // Error state
   if (error) {

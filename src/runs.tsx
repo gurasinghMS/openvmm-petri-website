@@ -303,5 +303,3 @@ export function RunsHeader({
     </>
   );
 }
-
-// (VirtualizedRunsTable moved to its own file VirtualizedTable.tsx)

@@ -171,8 +171,8 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
               textOverflow: 'ellipsis',
               whiteSpace: 'normal',
               wordBreak: 'break-word',
-              lineHeight: '1.1rem',
-              maxHeight: '2.0rem', // 2 lines * lineHeight
+              lineHeight: '1.0rem',
+              maxHeight: '2.1rem', // 2 lines * lineHeight
             }}
           >
             {branch}
@@ -210,7 +210,7 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'normal',
-                lineHeight: '1.1rem',
+                lineHeight: '1rem',
                 maxHeight: '2.1rem',
               }}
             >

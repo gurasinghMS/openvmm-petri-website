@@ -174,3 +174,23 @@
 .common-page-path:hover {
     text-decoration: underline;
 }
+
+.common-status-cell {
+    text-align: center;
+}
+
+.common-status-pass {
+    display: inline-block;
+    width: 0.80rem;
+    height: 0.80rem;
+    background-color: #27ae60;
+    border-radius: 50%;
+}
+
+.common-status-fail {
+    display: inline-block;
+    width: 0.80rem;
+    height: 0.80rem;
+    background-color: #e74c3c;
+    border-radius: 50%;
+}

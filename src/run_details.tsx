@@ -150,14 +150,16 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
     },
   ], [onTestLogClick]);
 
-  // Filter tests based on search term
+  // Conditional AND wildcard search
   const filteredTests = useMemo(() => {
     if (!runDetails?.tests) return [];
-    if (!internalFilter) return runDetails.tests;
-    return runDetails.tests.filter(test =>
-      test.name.toLowerCase().includes(internalFilter.toLowerCase()) ||
-      test.status.toLowerCase().includes(internalFilter.toLowerCase())
-    );
+    const terms = internalFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return runDetails.tests;
+    return runDetails.tests.filter(test => {
+      // Search in name and status fields
+      const haystack = `${test.name} ${test.status}`.toLowerCase();
+      return terms.every(term => haystack.includes(term));
+    });
   }, [runDetails?.tests, internalFilter]);
 
   // Create the table

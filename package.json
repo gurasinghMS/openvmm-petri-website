@@ -5,6 +5,7 @@
     "@tanstack/react-virtual": "^3.13.12",
     "ag-grid-community": "^34.2.0",
     "ag-grid-react": "^34.2.0",
+    "fuse.js": "^7.1.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3"

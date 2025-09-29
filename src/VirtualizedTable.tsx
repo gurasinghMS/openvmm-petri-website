@@ -23,7 +23,7 @@ function defaultInferRowClass(row: Row<any>): string {
 export function VirtualizedTable<TData extends object>({
     table,
     columnWidthMap,
-    estimatedRowHeight = 50,
+    estimatedRowHeight = 80,
     overscan = 10,
     getRowClassName,
 }: VirtualizedTableProps<TData>): React.JSX.Element {

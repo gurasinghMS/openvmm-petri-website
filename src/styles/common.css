@@ -1,6 +1,6 @@
 .common-page-display {
     padding: 0rem 2rem;
-    max-width: 2500px;
+    /* max-width: 2500px; */
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -142,13 +142,14 @@
 /* Simplified row styling: always white, no hover/background color variations */
 .virtualized-table-row {
     background: white !important;
-    border-bottom: 3px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
     box-sizing: border-box;
-    padding-bottom: 1rem;
 }
 
 /* Ensure proper column alignment in virtualized rows */
-.virtualized-table-row table {}
+.virtualized-table-row table {
+    border-collapse: collapse;
+}
 
 .virtualized-table-row td {
     padding: 0.6rem 0.5rem;

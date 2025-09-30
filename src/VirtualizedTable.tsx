@@ -188,7 +188,6 @@ export function VirtualizedTable<TData extends object>({
                                                             key={cell.id}
                                                             style={{
                                                                 boxSizing: 'border-box',
-                                                                borderLeft: '1px solid #eee',
                                                                 ...(w ? { width: w, minWidth: w, maxWidth: w } : {})
                                                             }}
                                                         >

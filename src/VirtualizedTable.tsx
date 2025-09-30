@@ -23,7 +23,7 @@ function defaultInferRowClass(row: Row<any>): string {
 export function VirtualizedTable<TData extends object>({
     table,
     columnWidthMap,
-    estimatedRowHeight = 80,
+    estimatedRowHeight = 50,
     overscan = 10,
     getRowClassName,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
@@ -62,9 +62,9 @@ export function VirtualizedTable<TData extends object>({
                 : undefined,
     });
 
-    useIntertwinedInnerWheel(tableContainerRef);
+    // useIntertwinedInnerWheel(tableContainerRef);
 
-    useIntertwinedOuterWheel(tableContainerRef);
+    // useIntertwinedOuterWheel(tableContainerRef);
 
     return (
         <div className="common-table" style={{ position: 'relative' }}>
@@ -187,8 +187,6 @@ export function VirtualizedTable<TData extends object>({
                                                         <td
                                                             key={cell.id}
                                                             style={{
-                                                                border: 'none',
-                                                                borderBottom: '1px solid #e0e0e0',
                                                                 boxSizing: 'border-box',
                                                                 ...(w ? { width: w, minWidth: w, maxWidth: w } : {})
                                                             }}

@@ -42,6 +42,7 @@ export function Runs(): React.JSX.Element {
     let branchFiltered = branchFilter === 'all' ? runs : runs.filter(run => run.metadata.ghBranch === branchFilter);
     const terms = internalFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (terms.length === 0) return branchFiltered;
+    console.log("Filtering with terms:", terms);
     return branchFiltered.filter(run => {
       // Search in run name, status, branch, PR, and PR title
       const status = run.metadata.petriFailed === 0 ? 'passed' : 'failed';
@@ -173,15 +174,15 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
             className="branch-name"
             title={branch}
             style={{
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
+              // display: '-webkit-box',
+              // WebkitLineClamp: 2,
+              // WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              // textOverflow: 'ellipsis',
               whiteSpace: 'normal',
               wordBreak: 'break-word',
-              lineHeight: '1.0rem',
-              maxHeight: '2.1rem', // 2 lines * lineHeight
+              lineHeight: '1.25rem',
+              maxHeight: '2.42rem', // 2 lines * lineHeight
             }}
           >
             {branch}
@@ -213,14 +214,14 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
               className="pr-combined-link"
               title={prTitle ? `#${pr} ${prTitle}` : `PR #${pr}`}
               style={{
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
+                // display: '-webkit-box',
+                // WebkitLineClamp: 2,
+                // WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                // textOverflow: 'ellipsis',
                 whiteSpace: 'normal',
-                lineHeight: '1.1rem',
-                maxHeight: '2.1rem',
+                lineHeight: '1.25rem',
+                maxHeight: '2.42rem',
               }}
             >
               {fullText}

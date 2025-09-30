@@ -366,7 +366,25 @@ export function InspectViewer(): React.JSX.Element {
         {
             id: 'screenshot',
             header: 'Screenshot',
-            cell: () => '', // Empty for now, screenshots are handled separately
+            cell: (info) => {
+                const screenshot = info.row.original.screenshot;
+                return screenshot ? (
+                    <img
+                        src={screenshot}
+                        alt="Screenshot"
+                        style={{
+                            maxWidth: '100px',
+                            maxHeight: '50px',
+                            cursor: 'pointer',
+                            objectFit: 'contain'
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setModalContent({ type: 'image', content: screenshot });
+                        }}
+                    />
+                ) : '';
+            },
             enableSorting: false,
         }
     ], []);
@@ -577,20 +595,20 @@ export function InspectViewer(): React.JSX.Element {
         <div className="common-page-display">
             <style>
                 {`
-                    .severity-ERROR {
-                        border-left: 4px solid #d00;
+                    .severity-ERROR td {
+                        border-left: 4px solid #d00 !important;
                         color: #900;
                     }
-                    .severity-WARN {
-                        border-left: 4px solid #d98e00;
+                    .severity-WARN td {
+                        border-left: 4px solid #d98e00 !important;
                         color: #a65f00;
                     }
-                    .severity-INFO {
-                        border-left: 4px solid #007acc;
+                    .severity-INFO td {
+                        border-left: 4px solid #007acc !important;
                         color: #004e7a;
                     }
-                    .severity-DEBUG {
-                        border-left: 4px solid #888;
+                    .severity-DEBUG td {
+                        border-left: 4px solid #888 !important;
                         color: #555;
                     }
                     .selected {
@@ -599,6 +617,9 @@ export function InspectViewer(): React.JSX.Element {
                     }
                     .virtualized-table-row {
                         cursor: pointer;
+                    }
+                    .virtualized-table-row td:nth-child(4) {
+                        word-break: break-word;
                     }
                 `}
             </style>

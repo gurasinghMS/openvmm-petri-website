@@ -13,7 +13,7 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter basename="/openvmm-petri-website/dist/index.html">
+    <BrowserRouter basename="/openvmm-petri-website/dist/">
       <QueryClientProvider client={queryClient}>
         {/* <Header /> */}
         <Content />

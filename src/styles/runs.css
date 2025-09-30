@@ -93,6 +93,7 @@
     font-weight: 600;
     font-size: 1rem;
     color: #2c3e50;
+    align-items: center;
 }
 
 .branch-name {

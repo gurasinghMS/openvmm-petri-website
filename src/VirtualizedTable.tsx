@@ -85,7 +85,7 @@ export function VirtualizedTable<TData extends object>({
                                 {headerGroup.headers.map((header) => {
                                     const defaultWidthMap: Record<string, number> = {
                                         name: 100,
-                                        creationTime: 170,
+                                        creationTime: 180,
                                         status: 60,
                                         failed: 60,
                                         total: 60,
@@ -188,6 +188,7 @@ export function VirtualizedTable<TData extends object>({
                                                             key={cell.id}
                                                             style={{
                                                                 boxSizing: 'border-box',
+                                                                borderLeft: '1px solid #eee',
                                                                 ...(w ? { width: w, minWidth: w, maxWidth: w } : {})
                                                             }}
                                                         >

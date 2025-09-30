@@ -218,7 +218,7 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
                 // WebkitLineClamp: 2,
                 // WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                // textOverflow: 'ellipsis',
+                textOverflow: 'ellipsis',
                 whiteSpace: 'normal',
                 lineHeight: '1.25rem',
                 maxHeight: '2.42rem',

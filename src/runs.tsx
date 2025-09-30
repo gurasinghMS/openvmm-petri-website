@@ -18,6 +18,7 @@ import { useNavigate, Link } from 'react-router-dom';
 export function Runs(): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [internalFilter, setInternalFilter] = useState<string>('');
   const navigate = useNavigate();
 
   // Query client should allow us to cache and reuse the data.
@@ -35,15 +36,20 @@ export function Runs(): React.JSX.Element {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'creationTime', desc: true }
   ]);
-  const [globalFilter, setGlobalFilter] = useState('');
 
-  // Filter runs based on branch selection
+  // Filter runs based on branch selection and search terms
   const filteredRuns = useMemo(() => {
-    if (branchFilter === 'all') {
-      return runs;
-    }
-    return runs.filter(run => run.metadata.ghBranch === branchFilter);
-  }, [runs, branchFilter]);
+    let branchFiltered = branchFilter === 'all' ? runs : runs.filter(run => run.metadata.ghBranch === branchFilter);
+    const terms = internalFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return branchFiltered;
+    return branchFiltered.filter(run => {
+      // Search in run name, status, branch, PR, and PR title
+      const status = run.metadata.petriFailed === 0 ? 'passed' : 'failed';
+      const pr = run.metadata.ghPr ? `${run.metadata.ghPr} ${run.metadata.prTitle || ''}` : '';
+      const haystack = `${run.name} ${status} ${run.metadata.ghBranch || ''} ${pr}`.toLowerCase();
+      return terms.every(term => haystack.includes(term));
+    });
+  }, [runs, branchFilter, internalFilter]);
 
   const columns = useMemo(() => createColumns((runId: string) => navigate(`/runs/${runId}`)), [navigate]);
 
@@ -52,10 +58,8 @@ export function Runs(): React.JSX.Element {
     columns,
     state: {
       sorting,
-      globalFilter,
     },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -69,12 +73,17 @@ export function Runs(): React.JSX.Element {
         <RunsHeader
           branchFilter={branchFilter}
           setBranchFilter={setBranchFilter}
-          globalFilter={globalFilter}
-          setGlobalFilter={setGlobalFilter}
-          resultCount={table.getFilteredRowModel().rows.length}
+          globalFilter={internalFilter}
+          setGlobalFilter={setInternalFilter}
+          resultCount={filteredRuns.length}
         />
       </div>
       <VirtualizedRunsTable table={table} />
+      {filteredRuns.length === 0 && runs.length > 0 && (
+        <div className="no-results" style={{ padding: '1rem' }}>
+          No runs match your search criteria.
+        </div>
+      )}
     </div>
   );
 }
@@ -210,7 +219,7 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'normal',
-                lineHeight: '1rem',
+                lineHeight: '1.1rem',
                 maxHeight: '2.1rem',
               }}
             >

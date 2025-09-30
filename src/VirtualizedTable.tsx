@@ -175,7 +175,7 @@ export function VirtualizedTable<TData extends object>({
                                                 {row.getVisibleCells().map((cell) => {
                                                     const defaultWidthMap: Record<string, number> = {
                                                         name: 100,
-                                                        creationTime: 170,
+                                                        creationTime: 180,
                                                         status: 60,
                                                         failed: 60,
                                                         total: 60,

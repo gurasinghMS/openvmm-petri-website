@@ -10,6 +10,8 @@ export interface VirtualizedTableProps<TData extends object> {
     overscan?: number; // default 10
     /** Derive a className for a given row (virtual wrapper div). */
     getRowClassName?: (row: Row<TData>) => string;
+    /** Handle row click events */
+    onRowClick?: (row: Row<TData>, event: React.MouseEvent) => void;
 }
 
 function defaultInferRowClass(row: Row<any>): string {
@@ -26,6 +28,7 @@ export function VirtualizedTable<TData extends object>({
     estimatedRowHeight = 50,
     overscan = 10,
     getRowClassName,
+    onRowClick,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
     const { rows } = table.getRowModel();
 
@@ -167,7 +170,9 @@ export function VirtualizedTable<TData extends object>({
                                         left: 0,
                                         width: '100%',
                                         transform: `translateY(${virtualRow.start}px)`,
+                                        cursor: onRowClick ? 'pointer' : 'default',
                                     }}
+                                    onClick={onRowClick ? (event) => onRowClick(row, event) : undefined}
                                 >
                                     <table className="common-advanced-table" style={{ margin: 0, tableLayout: 'fixed', width: '100%' }}>
                                         <tbody>

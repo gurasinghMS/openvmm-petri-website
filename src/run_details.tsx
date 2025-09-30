@@ -118,18 +118,18 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
       cell: info => {
         const testName = info.getValue() as string;
         const fullTestName = info.row.original.name;
-        const jobName = fullTestName.split('/')[0]; // Extract job name from full test name
+        // Encode the full test name for URL
+        const encodedTestName = encodeURIComponent(fullTestName);
 
-        return onTestLogClick ? (
-          <button
-            className="test-name-link"
-            onClick={() => onTestLogClick(fullTestName, jobName)}
-            title={`View logs for test: ${fullTestName}`}
+        return (
+          <Link
+            to={`/runs/${runId}/${encodedTestName}`}
+            state={{ testResult: info.row.original }}
+            className="run-name-link"
+            title={`View inspect for test: ${fullTestName}`}
           >
             {testName}
-          </button>
-        ) : (
-          <span className="test-name">{testName}</span>
+          </Link>
         );
       },
       enableSorting: true,

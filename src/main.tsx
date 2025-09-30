@@ -6,6 +6,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
 import { Tests } from './tests';
 import { RunDetailsView } from './run_details';
+import { InspectViewer } from './log_viewer';
 import { Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -28,6 +29,8 @@ function Content() {
       <Route path="runs" element={<Runs />} />
       {/* Route for individual run details */}
       <Route path="runs/:runId" element={<RunDetailsRouteWrapper />} />
+      {/* Route for inspect viewer */}
+      <Route path="runs/:runId/:testName" element={<InspectViewer />} />
       <Route path="tests" element={<Tests />} />
     </Routes>
   );

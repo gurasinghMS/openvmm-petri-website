@@ -170,23 +170,18 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
       cell: (info) => {
         const branch = info.getValue<string>() || '';
         return (
-          <span
+          <div
             className="branch-name"
             title={branch}
             style={{
-              // display: '-webkit-box',
-              // WebkitLineClamp: 2,
-              // WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              // textOverflow: 'ellipsis',
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
               lineHeight: '1.25rem',
-              maxHeight: '2.42rem', // 2 lines * lineHeight
             }}
           >
             {branch}
-          </span>
+          </div>
         );
       },
     },
@@ -214,14 +209,10 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
               className="pr-combined-link"
               title={prTitle ? `#${pr} ${prTitle}` : `PR #${pr}`}
               style={{
-                // display: '-webkit-box',
-                // WebkitLineClamp: 2,
-                // WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'normal',
+                whiteSpace: 'nowrap',
                 lineHeight: '1.25rem',
-                maxHeight: '2.42rem',
               }}
             >
               {fullText}

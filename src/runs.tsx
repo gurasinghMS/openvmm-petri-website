@@ -68,6 +68,7 @@ export function Runs(): React.JSX.Element {
     enableSortingRemoval: false,
     debugTable: false,
   });
+
   return (
     <div className="common-page-display">
       <div className="common-page-header">

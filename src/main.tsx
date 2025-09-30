@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import './styles/main.css';
 import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
@@ -13,12 +13,11 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter basename="/openvmm-petri-website/dist/">
+    <HashRouter>
       <QueryClientProvider client={queryClient}>
-        {/* <Header /> */}
         <Content />
       </QueryClientProvider>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
 

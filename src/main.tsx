@@ -1,133 +1,58 @@
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Header } from './header';
-import { RunOverview } from './runs_overview';
-import { TestDetails } from './test_details';
-import { TestLogViewer } from './test_log_viewer';
-import './styles.css';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { HashRouter } from 'react-router-dom';
+import './styles/main.css';
+import { Routes, Route } from 'react-router-dom';
+import { Runs } from './runs';
+import { Tests } from './tests';
+import { RunDetailsView } from './run_details';
+import { LogViewer } from './log_viewer';
+import { Navigate, useParams } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fetchRunData } from './fetch';
 
-// Main function that returns the Header component
-function Main(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<'runs' | 'tests'>('runs');
-  const [currentView, setCurrentView] = useState<'overview' | 'details' | 'test-details' | 'test-logs'>('overview');
-  const [selectedRunId, setSelectedRunId] = useState<string>('');
-  const [selectedRunDate, setSelectedRunDate] = useState<Date | undefined>(undefined);
-  const [selectedTestName, setSelectedTestName] = useState<string>('');
-  const [selectedJobName, setSelectedJobName] = useState<string>('');
-  const [searchFilter, setSearchFilter] = useState<string>('');
-  const [navigationContext, setNavigationContext] = useState<'overview' | 'test-details' | 'run-details'>('overview');
+const queryClient = new QueryClient();
 
-  const handleRunClick = (runId: string, runDate?: Date) => {
-    setSelectedRunId(runId);
-    setSelectedRunDate(runDate);
-    setCurrentView('details');
-    // Keep track of where we came from for proper back navigation
-    if (currentView === 'test-details') {
-      setNavigationContext('test-details');
-    } else {
-      setNavigationContext('overview');
-    }
-  };
+// Schedule a passive prefetch of the runs list (does not mark as actively used yet).
+// Cached ~3 min (fresh) and GC after 5 min idle; will hydrate instantly when a component queries ['runs'].
+void queryClient.prefetchQuery({
+  queryKey: ['runs'],
+  queryFn: () => fetchRunData(queryClient),
+  staleTime: 3 * 60 * 1000,
+  gcTime: 5 * 60 * 1000,
+});
 
-  const handleTestClick = (testName: string) => {
-    setSelectedTestName(testName);
-    setCurrentView('test-details');
-  };
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <HashRouter>
+      <QueryClientProvider client={queryClient}>
+        <Content />
+      </QueryClientProvider>
+    </HashRouter>
+  </React.StrictMode>
+);
 
-  const handleTestLogClick = (testName: string, jobName: string) => {
-    setSelectedTestName(testName);
-    setSelectedJobName(jobName);
-    setCurrentView('test-logs');
-    setNavigationContext('run-details');
-  };
-
-  const handleBackToOverview = () => {
-    setCurrentView('overview');
-    setSelectedRunId('');
-    setSelectedRunDate(undefined);
-    setSelectedTestName('');
-    setSelectedJobName('');
-    setNavigationContext('overview');
-  };
-
-  const handleBackFromRunDetails = () => {
-    if (navigationContext === 'test-details') {
-      // Go back to test details page
-      setCurrentView('test-details');
-      setSelectedRunId('');
-      setSelectedRunDate(undefined);
-    } else {
-      // Go back to overview
-      handleBackToOverview();
-    }
-  };
-
-  const handleBackFromTestLogs = () => {
-    // Always go back to run details when coming from test logs
-    setCurrentView('details');
-    setSelectedTestName('');
-    setSelectedJobName('');
-    setNavigationContext('overview');
-  };
-
+function Content() {
   return (
-    <div>
-      <Header 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        currentView={currentView}
-        onBackToOverview={handleBackToOverview}
-      />
-      <div className="main-container">
-        {currentView === 'overview' ? (
-          <RunOverview 
-            activeTab={activeTab} 
-            onRunClick={handleRunClick}
-            onTestClick={handleTestClick}
-            currentView="overview"
-            searchFilter={searchFilter}
-            onSearchFilterChange={setSearchFilter}
-          />
-        ) : currentView === 'test-details' ? (
-          <TestDetails
-            testName={selectedTestName}
-            onRunClick={handleRunClick}
-            onBack={handleBackToOverview}
-            searchFilter={searchFilter}
-            onSearchFilterChange={setSearchFilter}
-          />
-        ) : currentView === 'test-logs' ? (
-          <TestLogViewer
-            runId={selectedRunId}
-            runDate={selectedRunDate}
-            testName={selectedTestName}
-            jobName={selectedJobName}
-            onBack={handleBackFromTestLogs}
-            githubUrl={`https://github.com/microsoft/openvmm/actions/runs/${selectedRunId}`}
-          />
-        ) : (
-          <RunOverview 
-            activeTab={activeTab} 
-            onRunClick={handleRunClick}
-            onTestClick={handleTestClick}
-            currentView="run-details"
-            selectedRunId={selectedRunId}
-            selectedRunDate={selectedRunDate}
-            onBack={handleBackFromRunDetails}
-            backButtonText={navigationContext === 'test-details' ? 'Test Details' : 'All Runs'}
-            searchFilter={searchFilter}
-            onSearchFilterChange={setSearchFilter}
-            onTestLogClick={handleTestLogClick}
-          />
-        )}
-      </div>
-    </div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/runs" replace />} />
+      <Route path="runs" element={<Runs />} />
+      {/* Route for individual run details */}
+      <Route path="runs/:runId" element={<RunDetailsRouteWrapper />} />
+      {/* New route structure: /runs/:runId/:architecture/:testName (testName segment has internal slashes encoded) */}
+      <Route path="runs/:runId/:architecture/:testName" element={<LogViewer />} />
+      {/* Legacy route (single encoded segment containing architecture/testName) retained for backward compatibility */}
+      <Route path="runs/:runId/:testName" element={<LogViewer />} />
+      <Route path="tests" element={<Tests />} />
+    </Routes>
   );
 }
 
-// Mount the app to the #root element when the page loads
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  const root = createRoot(rootElement);
-  root.render(<Main />);
+// Lightweight wrapper to adapt route params to existing RunDetailsView component props
+function RunDetailsRouteWrapper() {
+  const { runId } = useParams();
+  if (!runId) {
+    return <div style={{ padding: '1rem' }}>Run ID is missing.</div>;
+  }
+  return <RunDetailsView runId={runId} searchFilter="" />;
 }

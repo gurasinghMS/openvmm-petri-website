@@ -1,0 +1,18 @@
+.test-name {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2c3e50;
+    max-width: 400px;
+    word-break: break-word;
+}
+
+.architecture-name {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2c3e50;
+    max-width: 150px;
+    word-break: break-word;
+    color: #495057;
+}

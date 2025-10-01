@@ -1,0 +1,189 @@
+.common-page-display {
+    padding: 0rem 2rem;
+    /* max-width: 2500px; */
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+}
+
+.common-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    position: sticky;
+    background-color: white;
+    z-index: 997;
+    top: 0;
+    height: 4rem;
+    min-width: 56rem;
+}
+
+.common-filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.common-filter-btn {
+    font-size: 0.87rem;
+    padding: 0.45rem 1rem;
+    border: none;
+    background: transparent;
+    color: #747474;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 600;
+    user-select: none;
+    position: relative;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    align-items: center;
+
+}
+
+.common-filter-btn:hover {
+    background-color: #f8f9fa;
+    color: #222222;
+    box-shadow: none;
+}
+
+.common-filter-btn.active {
+    background-color: #eeeeee;
+    color: #505050;
+    box-shadow: none;
+}
+
+.common-filter-btn.active:hover {
+    background-color: #eeeeee;
+    color: #000000;
+}
+
+.common-table {
+    background: white;
+    position: sticky;
+    top: 0;
+    min-width: 56rem;
+}
+
+.common-advanced-table {
+    border-collapse: collapse;
+    min-width: 56rem;
+    position: sticky;
+    top: 0;
+    width: 100%;
+}
+
+.common-advanced-table th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.8rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.common-advanced-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    z-index: 1;
+    position: sticky;
+    top: 4rem;
+}
+
+.common-advanced-table th.sortable:hover {
+    background-color: #e9ecef;
+    position: sticky;
+    top: 4rem;
+}
+
+.common-sort-indicator {
+    margin-left: 0.5rem;
+    font-weight: normal;
+    color: #6c757d;
+    font-size: 0.74rem;
+    opacity: 0.7;
+}
+
+.common-advanced-table-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    min-width: 0;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    position: sticky;
+    top: 4rem;
+}
+
+.common-search-input {
+    padding: 0.4rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    min-width: 200px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.common-search-input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.1);
+}
+
+/* Virtualized table styles */
+.virtualized-table-body {
+    background: white;
+}
+
+/* Simplified row styling: always white, no hover/background color variations */
+.virtualized-table-row {
+    background: white !important;
+    border-bottom: 1px solid #e0e0e0;
+    box-sizing: border-box;
+}
+
+/* Ensure proper column alignment in virtualized rows */
+.virtualized-table-row table {
+    border-collapse: collapse;
+}
+
+.virtualized-table-row td {
+    padding: 0.6rem 0.5rem;
+    vertical-align: middle;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+}
+
+/* Breadcrumb / page path link */
+.common-page-path {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.common-page-path:hover {
+    text-decoration: underline;
+}
+
+.common-status-cell {
+    text-align: center;
+}
+
+.common-status-pass {
+    display: inline-block;
+    width: 0.80rem;
+    height: 0.80rem;
+    background-color: #27ae60;
+    border-radius: 50%;
+}
+
+.common-status-fail {
+    display: inline-block;
+    width: 0.80rem;
+    height: 0.80rem;
+    background-color: #e74c3c;
+    border-radius: 50%;
+}

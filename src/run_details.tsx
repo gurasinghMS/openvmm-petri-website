@@ -5,48 +5,109 @@ import {
   getSortedRowModel,
   getFilteredRowModel,
   ColumnDef,
-  flexRender,
   SortingState,
 } from '@tanstack/react-table';
 import { RunDetails, TestResult } from './fetch';
-import { getRunDetails } from './dataStore';
-import './styles.css';
+import { Hamburger } from './hamburger';
+import { VirtualizedTable } from './VirtualizedTable';
+import { Link } from 'react-router-dom';
+import './styles/common.css';
+import './styles/runs.css';
+import './styles/run_details.css'
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchRunDetails } from './fetch';
 
 interface RunDetailsProps {
   runId: string;
-  searchFilter: string;
+  searchFilter: string; // initial or controlled filter value
+  setSearchFilter?: (val: string) => void; // optional external setter
   onTestLogClick?: (testName: string, jobName: string) => void;
 }
 
-export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
+interface RunDetailsHeaderProps {
+  filter: string;
+  setFilter: (val: string) => void;
+  resultCount: number;
+  totalCount: number;
+  runId: string;
+}
+
+function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }: RunDetailsHeaderProps): React.JSX.Element {
+  return (
+    <>
+      <div className="runs-header-left-section">
+        <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Hamburger />
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Link to="/runs" className="common-page-path" style={{ color: 'inherit' }}>Runs</Link>
+            <span style={{ opacity: 0.65 }}>/</span>
+            <Link to={`/runs/${runId}`} className="common-page-path" style={{ color: 'inherit' }}>{runId}</Link>
+          </h3>
+        </div>
+      </div>
+      <div className="runs-header-right-section">
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search tests..."
+          className="common-search-input"
+        />
+        <span className="results-count" title={`${resultCount} of ${totalCount} tests visible`}>
+          {resultCount} tests
+        </span>
+      </div>
+    </>
+  );
+}
+
+export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  // (Spinner removed) Loading state previously unused; can be reintroduced if UI needs it later.
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'status', desc: false } // Sort by status ascending, failed tests first
   ]);
+  // Local filter state (falls back to external setter if provided)
+  const [internalFilter, setInternalFilter] = useState<string>(searchFilter || '');
 
   useEffect(() => {
-    const loadRunDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log(`🔍 Getting run details for run ID: ${runId}`);
-        const details = await getRunDetails(runId);
-        console.log(`✅ Successfully got run details:`, details);
-        console.log(`📊 Total tests found: ${details.tests?.length || 0}`);
-        console.log(`📋 Test results:`, details.tests);
-        setRunDetails(details);
-      } catch (err) {
-        console.error(`❌ Error getting run details for ${runId}:`, err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch run details');
-      } finally {
-        setLoading(false);
-      }
-    };
+    // sync if parent changes
+    setInternalFilter(searchFilter || '');
+  }, [searchFilter]);
 
-    loadRunDetails();
-  }, [runId]);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let cancelled = false;
+  // (loading state removed)
+    setError(null);
+
+    queryClient
+      .fetchQuery({
+        queryKey: ['runDetails', runId],
+        // Pass queryClient down so petri.jsonl / petri.passed files discovered during listing get prefetched & cached
+        queryFn: () => fetchRunDetails(runId, queryClient),
+        staleTime: Infinity, // never goes stale
+        gcTime: 15 * 60 * 1000, // still garbage collect after 5 minutes unused
+      })
+      .then((details) => {
+        if (!cancelled) {
+          setRunDetails(details);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch run details');
+        }
+      })
+      .finally(() => {
+        // no-op (loading state removed)
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient, runId]);
 
   // Define columns for the test results table
   const columns = useMemo<ColumnDef<TestResult>[]>(() => [
@@ -68,20 +129,20 @@ export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetai
         return parts.length > 1 ? parts.slice(1).join('/') : row.name;
       },
       cell: info => {
-        const testName = info.getValue() as string;
-        const fullTestName = info.row.original.name;
-        const jobName = fullTestName.split('/')[0]; // Extract job name from full test name
-        
-        return onTestLogClick ? (
-          <button 
-            className="test-name-link"
-            onClick={() => onTestLogClick(fullTestName, jobName)}
-            title={`View logs for test: ${fullTestName}`}
+        const testName = info.getValue() as string; // portion after first '/'
+        const fullTestName = info.row.original.name; // architecture/testName...
+        const [architecturePart, ...restParts] = fullTestName.split('/');
+        const encodedArchitecture = encodeURIComponent(architecturePart);
+        const encodedRemainder = encodeURIComponent(restParts.join('/'));
+        return (
+          <Link
+            to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
+            state={{ testResult: info.row.original }}
+            className="run-name-link"
+            title={`View inspect for test: ${fullTestName}`}
           >
             {testName}
-          </button>
-        ) : (
-          <span className="test-name">{testName}</span>
+          </Link>
         );
       },
       enableSorting: true,
@@ -93,9 +154,8 @@ export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetai
       cell: (info) => {
         const status = info.getValue<string>();
         return (
-          <div className="status-cell">
-            <span className={`status-dot ${status === 'passed' ? 'status-pass' : 'status-fail'}`}>
-              ●
+          <div className="common-status-cell">
+            <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
             </span>
           </div>
         );
@@ -103,16 +163,17 @@ export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetai
     },
   ], [onTestLogClick]);
 
-  // Filter tests based on search term
+  // Conditional AND wildcard search
   const filteredTests = useMemo(() => {
     if (!runDetails?.tests) return [];
-    if (!searchFilter) return runDetails.tests;
-    
-    return runDetails.tests.filter(test => 
-      test.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      test.status.toLowerCase().includes(searchFilter.toLowerCase())
-    );
-  }, [runDetails?.tests, searchFilter]);
+    const terms = internalFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return runDetails.tests;
+    return runDetails.tests.filter(test => {
+      // Search in name and status fields
+      const haystack = `${test.name} ${test.status}`.toLowerCase();
+      return terms.every(term => haystack.includes(term));
+    });
+  }, [runDetails?.tests, internalFilter]);
 
   // Create the table
   const table = useReactTable({
@@ -129,12 +190,6 @@ export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetai
     enableSortingRemoval: false,
   });
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="loading-message">Loading run details...</div>
-    );
-  }
 
   // Error state
   if (error) {
@@ -146,49 +201,27 @@ export function RunDetailsView({ runId, searchFilter, onTestLogClick }: RunDetai
   const totalTests = runDetails?.tests?.length || 0;
 
   return (
-    <div className="table-container">
-      <table className="advanced-run-table">
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className={header.column.getCanSort() ? 'sortable' : ''}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div className="header-content">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())
-                    }
-                    {header.column.getCanSort() && (
-                      <span className="sort-indicator">
-                        {header.column.getIsSorted() === 'asc' ? ' ↑' : 
-                         header.column.getIsSorted() === 'desc' ? ' ↓' : ' ↕'}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className={`table-row ${row.original.status === 'failed' ? 'failed-row' : 'passed-row'}`}>
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
+    <div className="common-page-display">
+      <div className="common-page-header">
+        <RunDetailsHeader
+          filter={internalFilter}
+          setFilter={(val) => {
+            setInternalFilter(val);
+            setSearchFilter?.(val);
+          }}
+          resultCount={filteredTests.length}
+          totalCount={totalTests}
+          runId={runId}
+        />
+      </div>
+      <VirtualizedTable<TestResult>
+        table={table}
+        columnWidthMap={{ architecture: 140, testName: 600, status: 80 }}
+        estimatedRowHeight={44}
+        getRowClassName={(row) => row.original.status === 'failed' ? 'failed-row' : 'passed-row'}
+      />
       {filteredTests.length === 0 && totalTests > 0 && (
-        <div className="no-results">
+        <div className="no-results" style={{ padding: '1rem' }}>
           No tests match your search criteria.
         </div>
       )}

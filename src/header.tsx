@@ -1,31 +1,18 @@
 import React from 'react';
-import './styles.css';
-
-interface HeaderProps {
-  activeTab: 'runs' | 'tests';
-  setActiveTab: (tab: 'runs' | 'tests') => void;
-  currentView: 'overview' | 'details' | 'test-details' | 'test-logs';
-  onBackToOverview?: () => void;
-}
+import './styles/header.css';
+import { useNavigate } from 'react-router-dom';
 
 // Header component with dark grey background and white text
-export function Header({ activeTab, setActiveTab, currentView, onBackToOverview }: HeaderProps): React.JSX.Element {
-  const handleTabClick = (tab: 'runs' | 'tests') => {
-    if ((currentView === 'details' || currentView === 'test-details' || currentView === 'test-logs') && onBackToOverview) {
-      // If we're in details view, go back to overview first
-      onBackToOverview();
-    }
-    // Set the active tab
-    setActiveTab(tab);
-  };
+export function Header(): React.JSX.Element {
+  const navigate = useNavigate();
+  const currentPath = window.location.pathname;
 
-  // Don't highlight any tab when in details views
-  const getTabClass = (tab: 'runs' | 'tests') => {
-    if (currentView === 'details' || currentView === 'test-details') {
-      return 'tab-btn'; // No active class when in details view
-    }
-    return `tab-btn ${activeTab === tab ? 'active' : ''}`;
-  };
+  function getTabClass(tab: 'runs' | 'tests') {
+    const isActive =
+      (tab === 'runs' && currentPath.endsWith('/runs')) ||
+      (tab === 'tests' && currentPath.endsWith('/tests'));
+    return isActive ? 'header-tab active' : 'header-tab';
+  }
 
   return (
     <div className="header-bar">
@@ -34,18 +21,18 @@ export function Header({ activeTab, setActiveTab, currentView, onBackToOverview 
           Petri Test Viewer
         </div>
         <div className="tab-navigation">
-          <button
+          <div
             className={getTabClass('runs')}
-            onClick={() => handleTabClick('runs')}
+            onClick={() => navigate('runs')}
           >
             Runs
-          </button>
-          <button
+          </div>
+          <div
             className={getTabClass('tests')}
-            onClick={() => handleTabClick('tests')}
+            onClick={() => navigate('tests')}
           >
             Tests
-          </button>
+          </div>
         </div>
       </div>
       <div className="header-buttons">

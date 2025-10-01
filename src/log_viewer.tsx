@@ -365,15 +365,19 @@ export function LogViewer(): React.JSX.Element {
             if (!entry) return;
 
             if (e.shiftKey) {
-                // Ctrl+Shift+C (or Cmd+Shift+C) => copy deep link to this log line
+                // Ctrl+Shift+C (or Cmd+Shift+C) => copy deep link to this log line (hash-based routing aware)
                 e.preventDefault();
-                const params = new URLSearchParams(location.search);
-                params.set('log', String(entry.index));
-                const url = `${window.location.origin}${location.pathname}?${params.toString()}`;
-                navigator.clipboard?.writeText(url).catch(() => {
+                const { origin, pathname, hash } = window.location;
+                // HashRouter format: <origin><pathname>#/route/segments?query
+                const hashParts = hash.split('?');
+                const hashRoute = hashParts[0] || '#/';
+                const hashQuery = hashParts[1] ? new URLSearchParams(hashParts[1]) : new URLSearchParams();
+                hashQuery.set('log', String(entry.index));
+                const deepLink = `${origin}${pathname}${hashRoute}?${hashQuery.toString()}`;
+                navigator.clipboard?.writeText(deepLink).catch(() => {
                     try {
                         const ta = document.createElement('textarea');
-                        ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                        ta.value = deepLink; ta.style.position = 'fixed'; ta.style.opacity = '0';
                         document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
                     } catch { /* no-op */ }
                 });

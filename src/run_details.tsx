@@ -61,7 +61,7 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
 
 export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true); // retained for potential future spinner, intentionally unused after route changes
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'status', desc: false } // Sort by status ascending, failed tests first
@@ -116,14 +116,14 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
         return parts.length > 1 ? parts.slice(1).join('/') : row.name;
       },
       cell: info => {
-        const testName = info.getValue() as string;
-        const fullTestName = info.row.original.name;
-        // Encode the full test name for URL
-        const encodedTestName = encodeURIComponent(fullTestName);
-
+        const testName = info.getValue() as string; // portion after first '/'
+        const fullTestName = info.row.original.name; // architecture/testName...
+        const [architecturePart, ...restParts] = fullTestName.split('/');
+        const encodedArchitecture = encodeURIComponent(architecturePart);
+        const encodedRemainder = encodeURIComponent(restParts.join('/'));
         return (
           <Link
-            to={`/runs/${runId}/${encodedTestName}`}
+            to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
             state={{ testResult: info.row.original }}
             className="run-name-link"
             title={`View inspect for test: ${fullTestName}`}

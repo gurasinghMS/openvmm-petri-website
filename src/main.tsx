@@ -29,7 +29,9 @@ function Content() {
       <Route path="runs" element={<Runs />} />
       {/* Route for individual run details */}
       <Route path="runs/:runId" element={<RunDetailsRouteWrapper />} />
-      {/* Route for inspect viewer */}
+      {/* New route structure: /runs/:runId/:architecture/:testName (testName segment has internal slashes encoded) */}
+      <Route path="runs/:runId/:architecture/:testName" element={<InspectViewer />} />
+      {/* Legacy route (single encoded segment containing architecture/testName) retained for backward compatibility */}
       <Route path="runs/:runId/:testName" element={<InspectViewer />} />
       <Route path="tests" element={<Tests />} />
     </Routes>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Hamburger } from './hamburger';
-import { Link, useParams, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { getCachedRunDetails } from './dataStore';
 import { TestResult } from './fetch';
 import { VirtualizedTable } from './VirtualizedTable';
@@ -18,7 +18,9 @@ const baseUrl = "https://openvmmghtestresults.blob.core.windows.net/results";
 
 interface InspectViewerHeaderProps {
     runId: string;
-    testName: string;
+    architecture: string;
+    testNameRemainder: string; // portion after architecture
+    fullTestName: string; // architecture + '/' + remainder
     searchFilter: string;
     setSearchFilter: (filter: string) => void;
     onClearFilter: () => void;
@@ -35,11 +37,9 @@ interface LogEntry {
     screenshot: string | null;
 }
 
-function InspectViewerHeader({ runId, testName, searchFilter, setSearchFilter, onClearFilter }: InspectViewerHeaderProps): React.JSX.Element {
-    // Split test name into architecture and name
-    const parts = testName.split('/');
-    const architecture = parts.length > 1 ? parts[0] : '';
-    const name = parts.length > 1 ? parts.slice(1).join('/') : testName;
+function InspectViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchFilter, setSearchFilter, onClearFilter }: InspectViewerHeaderProps): React.JSX.Element {
+    const encodedArchitecture = encodeURIComponent(architecture);
+    const encodedRemainder = encodeURIComponent(testNameRemainder);
 
     return (
         <>
@@ -72,7 +72,7 @@ function InspectViewerHeader({ runId, testName, searchFilter, setSearchFilter, o
                         <Link to={`/runs/${runId}`} className="common-page-path" style={{ color: 'inherit', flexShrink: 0 }}>{runId}</Link>
                         <span style={{ flexShrink: 0 }}>/</span>
                         <Link
-                            to={`/runs/${runId}/${encodeURIComponent(testName)}`}
+                            to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
                             className="common-page-path"
                             style={{
                                 overflow: 'hidden',
@@ -84,9 +84,9 @@ function InspectViewerHeader({ runId, testName, searchFilter, setSearchFilter, o
                                 display: 'block',
                                 maxWidth: '100%'
                             }}
-                            title={testName}
+                            title={fullTestName}
                         >
-                            {name}
+                            {testNameRemainder}
                         </Link>
                         {architecture && (
                             <span
@@ -146,14 +146,34 @@ export function InspectViewer(): React.JSX.Element {
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedRow, setSelectedRow] = useState<string | null>(null);
+    const [pendingScrollIndex, setPendingScrollIndex] = useState<number | null>(null);
     const [modalContent, setModalContent] = useState<{ type: 'image' | 'text' | 'iframe', content: string } | null>(null);
     const [testResult, setTestResult] = useState<TestResult | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const logContainerRef = useRef<HTMLDivElement>(null);
+    // Deep link initialization refs
+    const initialLogParamRef = useRef<number | null>(null);
+    const initializedFromUrlRef = useRef<boolean>(false);
 
-    const { runId, testName: encodedTestName } = useParams();
+    const { runId, architecture: archParam, testName: encodedTestName } = useParams();
     const location = useLocation();
-    const testName = encodedTestName ? decodeURIComponent(encodedTestName) : 'unknown';
+    const navigate = useNavigate();
+    // Build full test name depending on whether new (architecture + remainder) or legacy route
+    let fullTestName: string;
+    let architecture: string;
+    let testNameRemainder: string;
+    if (archParam) {
+        architecture = decodeURIComponent(archParam);
+        testNameRemainder = encodedTestName ? decodeURIComponent(encodedTestName) : '';
+        fullTestName = architecture + '/' + testNameRemainder;
+    } else {
+        const legacy = encodedTestName ? decodeURIComponent(encodedTestName) : 'unknown';
+        const parts = legacy.split('/');
+        architecture = parts.length > 1 ? parts[0] : '';
+        testNameRemainder = parts.length > 1 ? parts.slice(1).join('/') : legacy;
+        fullTestName = legacy;
+    }
 
 
     // Try to get test data from navigation state or cached run details
@@ -169,7 +189,7 @@ export function InspectViewer(): React.JSX.Element {
         if (runId) {
             const cachedRunDetails = getCachedRunDetails(runId);
             if (cachedRunDetails) {
-                const foundTest = cachedRunDetails.tests.find(test => test.name === testName);
+                const foundTest = cachedRunDetails.tests.find(test => test.name === fullTestName);
                 if (foundTest) {
                     setTestResult(foundTest);
                     return;
@@ -179,7 +199,7 @@ export function InspectViewer(): React.JSX.Element {
 
         // No cached data found
         setTestResult(null);
-    }, [runId, testName, location.state]);    // Utility functions from test.html
+    }, [runId, fullTestName, location.state]);    // Utility functions from test.html
     const node = (tag: string, attrs: any = {}, ...content: any[]): HTMLElement => {
         const element = document.createElement(tag);
         for (const [key, value] of Object.entries(attrs)) {
@@ -407,7 +427,7 @@ export function InspectViewer(): React.JSX.Element {
     // Fetch test results
     useEffect(() => {
         const fetchTestResults = async () => {
-            if (!runId || !testName) {
+            if (!runId || !fullTestName) {
                 return;
             }
 
@@ -416,14 +436,16 @@ export function InspectViewer(): React.JSX.Element {
                 // Try to construct the correct URL. The path structure is: runId/architecture/jobName/testName  
                 // If we have test result data with path, use it, otherwise try common job names
                 const tryFetchWithJobNames = async (jobNames: string[]) => {
-                    for (const jobName of jobNames) {
-                        const tryUrl = `${baseUrl}/${runId}/${jobName}/${testName}/petri.jsonl`;
+                    for (const _jobName of jobNames) { // _jobName intentionally unused; placeholder for potential future differentiation
+                        const tryUrl = `${baseUrl}/${runId}/${architecture}/${testNameRemainder}/petri.jsonl`;
+                        console.log('Trying URL:', tryUrl);
                         try {
                             const tryResponse = await fetch(tryUrl);
                             if (tryResponse.ok) {
                                 return { response: tryResponse, url: tryUrl };
                             }
-                        } catch (error) {
+                        } catch {
+                            // ignore and try next
                         }
                     }
                     throw new Error('Could not find petri.jsonl with any job name');
@@ -534,7 +556,7 @@ export function InspectViewer(): React.JSX.Element {
         };
 
         fetchTestResults();
-    }, [runId, testName, testResult]);
+    }, [runId, fullTestName, testResult]);
 
     // Filter logs when search changes
     useEffect(() => {
@@ -570,26 +592,154 @@ export function InspectViewer(): React.JSX.Element {
                     searchInputRef.current?.blur();
                 }
             }
+
+            // Custom copy handlers
+            const isCopyCombo = (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey);
+            if (!isCopyCombo) return;
+
+            // Don't override when typing in an input/textarea or there is an actual text selection
+            const active = document.activeElement as HTMLElement | null;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+            const selection = window.getSelection();
+            if (selection && !selection.isCollapsed && selection.toString().trim().length > 0) return;
+
+            // Need a selected log row
+            if (!selectedRow) return;
+
+            const idx = parseInt(selectedRow.replace('log-', ''), 10);
+            if (isNaN(idx)) return;
+            const entry = logEntries.find(le => le.index === idx);
+            if (!entry) return;
+
+            if (e.shiftKey) {
+                // Ctrl+Shift+C (or Cmd+Shift+C) => copy deep link to this log line
+                e.preventDefault();
+                const params = new URLSearchParams(location.search);
+                params.set('log', String(entry.index));
+                const url = `${window.location.origin}${location.pathname}?${params.toString()}`;
+                navigator.clipboard?.writeText(url).catch(() => {
+                    try {
+                        const ta = document.createElement('textarea');
+                        ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                    } catch { /* no-op */ }
+                });
+                return;
+            }
+
+            // Plain Ctrl+C => copy JSON representation of the selected log line only
+            e.preventDefault();
+            const jsonObj: Record<string, any> = {
+                index: entry.index,
+                timestamp: entry.timestamp,
+                relative: entry.relative,
+                severity: entry.severity,
+                source: entry.source,
+                message: (entry.messageNode.textContent || '').trim(),
+            };
+            if (entry.screenshot) jsonObj.screenshot = entry.screenshot;
+            const jsonBlock = JSON.stringify(jsonObj, null, 2);
+            navigator.clipboard?.writeText(jsonBlock).catch(() => {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = jsonBlock; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                } catch { /* no-op */ }
+            });
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [modalContent, searchFilter]);
+    }, [modalContent, searchFilter, selectedRow, logEntries, location.search]);
 
-    const handleRowClick = (logId: string, event: React.MouseEvent) => {
-        if ((event.target as HTMLElement).closest('a')) return;
+    const handleRowClick = (originalIndex: number, logId: string, event: React.MouseEvent) => {
+        if ((event.target as HTMLElement).closest('a')) return; // ignore clicks on links
+
+        // Detect if user is performing a text selection inside this row. If so, never remove the highlight.
+        const sel = window.getSelection();
+        const isSelectingText = !!sel && !sel.isCollapsed && sel.toString().trim().length > 0;
+        const currentTarget = event.currentTarget as HTMLElement | null;
+        let selectionInsideRow = false;
+        if (isSelectingText && currentTarget && sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const common = range.commonAncestorContainer;
+            selectionInsideRow = currentTarget.contains(common.nodeType === 1 ? common as Node : common.parentElement as Node);
+        }
+
+        const params = new URLSearchParams(location.search);
+
+        // If already selected and the user is dragging/selecting text inside the row, keep selection & ensure URL param is present.
+        if (selectedRow === logId && selectionInsideRow) {
+            if (!params.get('log')) {
+                params.set('log', originalIndex.toString());
+                navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+            }
+            return; // do not toggle off
+        }
 
         if (selectedRow === logId) {
+            // Plain click on an already selected row (no text selection) -> toggle off
             setSelectedRow(null);
-        } else {
-            setSelectedRow(logId);
+            params.delete('log');
+            navigate(params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname, { replace: true });
+            return;
         }
+
+        // Selecting a new row
+        setSelectedRow(logId);
+        params.set('log', originalIndex.toString());
+        navigate(`${location.pathname}?${params.toString()}`, { replace: true });
     };
 
     const handleClearFilter = () => {
         setSearchFilter('');
         searchInputRef.current?.focus();
     };
+
+    // Capture the initial ?log param once per runId/testName change
+    useEffect(() => {
+        initializedFromUrlRef.current = false;
+        const params = new URLSearchParams(location.search);
+        const raw = params.get('log');
+        if (raw == null) {
+            initialLogParamRef.current = null;
+            // Even if absent we consider initialization done (no auto-selection needed)
+            initializedFromUrlRef.current = true;
+            return;
+        }
+        const parsed = parseInt(raw, 10);
+        if (isNaN(parsed)) {
+            initialLogParamRef.current = null;
+            initializedFromUrlRef.current = true;
+            return;
+        }
+        initialLogParamRef.current = parsed;
+    }, [runId, fullTestName]);
+
+    // Perform one-time selection & scroll after logs load (deep link only)
+    useEffect(() => {
+        if (initializedFromUrlRef.current) return; // already handled (or none needed)
+        const target = initialLogParamRef.current;
+        if (target == null) return; // nothing to do
+        if (!logEntries.length) return; // wait for entries
+        const entryExists = logEntries.some(le => le.index === target);
+        if (!entryExists) {
+            initializedFromUrlRef.current = true; // finalize even if missing
+            return;
+        }
+        const logId = `log-${target}`;
+        setSelectedRow(logId);
+        const displayIdx = filteredLogs.findIndex(l => l.index === target);
+        if (displayIdx >= 0) setPendingScrollIndex(displayIdx);
+        initializedFromUrlRef.current = true; // prevent future runs
+    }, [logEntries, filteredLogs]);
+
+    // Once we've scrolled for the deep link, clear the pending index so subsequent clicks don't re-scroll
+    useEffect(() => {
+        if (pendingScrollIndex == null) return;
+        const id = requestAnimationFrame(() => setPendingScrollIndex(null));
+        return () => cancelAnimationFrame(id);
+    }, [pendingScrollIndex]);
 
     return (
         <div className="common-page-display">
@@ -626,14 +776,16 @@ export function InspectViewer(): React.JSX.Element {
             <div className="common-page-header">
                 <InspectViewerHeader
                     runId={runId || 'unknown'}
-                    testName={testName}
+                    architecture={architecture}
+                    testNameRemainder={testNameRemainder}
+                    fullTestName={fullTestName}
                     searchFilter={searchFilter}
                     setSearchFilter={setSearchFilter}
                     onClearFilter={handleClearFilter}
                 />
             </div>
 
-            <div style={{ fontFamily: 'monospace', fontSize: '14px', position: 'relative' }}>
+            <div ref={logContainerRef} style={{ fontFamily: 'monospace', fontSize: '14px', position: 'relative' }}>
                 {filteredLogs.length === 0 && !loading ? (
                     <div style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
                         No log entries found
@@ -656,8 +808,9 @@ export function InspectViewer(): React.JSX.Element {
                         }}
                         onRowClick={(row, event) => {
                             const logId = `log-${row.original.index}`;
-                            handleRowClick(logId, event);
+                            handleRowClick(row.original.index, logId, event);
                         }}
+                        scrollToIndex={pendingScrollIndex}
                     />
                 )}
             </div>

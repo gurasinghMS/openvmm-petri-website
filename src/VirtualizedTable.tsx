@@ -12,6 +12,10 @@ export interface VirtualizedTableProps<TData extends object> {
     getRowClassName?: (row: Row<TData>) => string;
     /** Handle row click events */
     onRowClick?: (row: Row<TData>, event: React.MouseEvent) => void;
+    /** If provided, the virtualizer will scroll this row index into view (center aligned). */
+    scrollToIndex?: number | null;
+    /** Optional row context menu handler */
+    onRowContextMenu?: (row: Row<TData>, event: React.MouseEvent) => void;
 }
 
 function defaultInferRowClass(row: Row<any>): string {
@@ -29,6 +33,8 @@ export function VirtualizedTable<TData extends object>({
     overscan = 10,
     getRowClassName,
     onRowClick,
+    scrollToIndex,
+    onRowContextMenu,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
     const { rows } = table.getRowModel();
 
@@ -64,6 +70,15 @@ export function VirtualizedTable<TData extends object>({
                 ? element => element?.getBoundingClientRect().height
                 : undefined,
     });
+
+    // Scroll to a requested index (center align) whenever scrollToIndex changes.
+    useEffect(() => {
+        if (scrollToIndex == null) return;
+        if (scrollToIndex < 0 || scrollToIndex >= rows.length) return;
+        try {
+            rowVirtualizer.scrollToIndex(scrollToIndex, { align: 'center' });
+        } catch { /* no-op */ }
+    }, [scrollToIndex, rowVirtualizer, rows.length]);
 
     // useIntertwinedInnerWheel(tableContainerRef);
 
@@ -173,6 +188,7 @@ export function VirtualizedTable<TData extends object>({
                                         cursor: onRowClick ? 'pointer' : 'default',
                                     }}
                                     onClick={onRowClick ? (event) => onRowClick(row, event) : undefined}
+                                    onContextMenu={onRowContextMenu ? (event) => onRowContextMenu(row, event) : undefined}
                                 >
                                     <table className="common-advanced-table" style={{ margin: 0, tableLayout: 'fixed', width: '100%' }}>
                                         <tbody>

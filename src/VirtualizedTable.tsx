@@ -14,8 +14,6 @@ export interface VirtualizedTableProps<TData extends object> {
     onRowClick?: (row: Row<TData>, event: React.MouseEvent) => void;
     /** If provided, the virtualizer will scroll this row index into view (center aligned). */
     scrollToIndex?: number | null;
-    /** Optional row context menu handler */
-    onRowContextMenu?: (row: Row<TData>, event: React.MouseEvent) => void;
 }
 
 function defaultInferRowClass(row: Row<any>): string {
@@ -34,7 +32,6 @@ export function VirtualizedTable<TData extends object>({
     getRowClassName,
     onRowClick,
     scrollToIndex,
-    onRowContextMenu,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
     const { rows } = table.getRowModel();
 
@@ -188,7 +185,6 @@ export function VirtualizedTable<TData extends object>({
                                         cursor: onRowClick ? 'pointer' : 'default',
                                     }}
                                     onClick={onRowClick ? (event) => onRowClick(row, event) : undefined}
-                                    onContextMenu={onRowContextMenu ? (event) => onRowContextMenu(row, event) : undefined}
                                 >
                                     <table className="common-advanced-table" style={{ margin: 0, tableLayout: 'fixed', width: '100%' }}>
                                         <tbody>

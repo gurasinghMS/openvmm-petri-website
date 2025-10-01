@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Hamburger } from './hamburger';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { getCachedRunDetails } from './dataStore';
-import { TestResult } from './fetch';
 import { VirtualizedTable } from './VirtualizedTable';
+import { InspectOverlay } from './inspect';
+import { fetchProcessedPetriLog, ProcessedLogEntry } from './fetch';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     useReactTable,
     getCoreRowModel,
@@ -13,8 +14,6 @@ import {
     SortingState,
 } from '@tanstack/react-table';
 import './styles/common.css';
-
-const baseUrl = "https://openvmmghtestresults.blob.core.windows.net/results";
 
 interface InspectViewerHeaderProps {
     runId: string;
@@ -26,18 +25,10 @@ interface InspectViewerHeaderProps {
     onClearFilter: () => void;
 }
 
-interface LogEntry {
-    index: number;
-    timestamp: string;
-    relative: string;
-    severity: string;
-    source: string;
-    messageNode: HTMLElement;
-    messageText: string;
-    screenshot: string | null;
-}
+// Display entry shape sourced from fetchProcessedPetriLog
+interface LogEntry extends ProcessedLogEntry { }
 
-function InspectViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchFilter, setSearchFilter, onClearFilter }: InspectViewerHeaderProps): React.JSX.Element {
+function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchFilter, setSearchFilter, onClearFilter }: InspectViewerHeaderProps): React.JSX.Element {
     const encodedArchitecture = encodeURIComponent(architecture);
     const encodedRemainder = encodeURIComponent(testNameRemainder);
 
@@ -140,7 +131,7 @@ function InspectViewerHeader({ runId, architecture, testNameRemainder, fullTestN
     );
 }
 
-export function InspectViewer(): React.JSX.Element {
+export function LogViewer(): React.JSX.Element {
     const [searchFilter, setSearchFilter] = useState<string>('');
     const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
@@ -148,7 +139,8 @@ export function InspectViewer(): React.JSX.Element {
     const [selectedRow, setSelectedRow] = useState<string | null>(null);
     const [pendingScrollIndex, setPendingScrollIndex] = useState<number | null>(null);
     const [modalContent, setModalContent] = useState<{ type: 'image' | 'text' | 'iframe', content: string } | null>(null);
-    const [testResult, setTestResult] = useState<TestResult | null>(null);
+    const [inspectFileUrl, setInspectFileUrl] = useState<string | null>(null);
+    // Removed cached testResult usage – we now always fetch directly
     const [sorting, setSorting] = useState<SortingState>([]);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const logContainerRef = useRef<HTMLDivElement>(null);
@@ -176,146 +168,7 @@ export function InspectViewer(): React.JSX.Element {
     }
 
 
-    // Try to get test data from navigation state or cached run details
-    useEffect(() => {
-        // First check if test data was passed via navigation state
-        const stateTestResult = location.state?.testResult as TestResult | undefined;
-        if (stateTestResult) {
-            setTestResult(stateTestResult);
-            return;
-        }
-
-        // Fall back to checking cached run details
-        if (runId) {
-            const cachedRunDetails = getCachedRunDetails(runId);
-            if (cachedRunDetails) {
-                const foundTest = cachedRunDetails.tests.find(test => test.name === fullTestName);
-                if (foundTest) {
-                    setTestResult(foundTest);
-                    return;
-                }
-            }
-        }
-
-        // No cached data found
-        setTestResult(null);
-    }, [runId, fullTestName, location.state]);    // Utility functions from test.html
-    const node = (tag: string, attrs: any = {}, ...content: any[]): HTMLElement => {
-        const element = document.createElement(tag);
-        for (const [key, value] of Object.entries(attrs)) {
-            if (key === 'class') {
-                element.className = value as string;
-            } else if (key === 'dataset') {
-                Object.assign(element.dataset, value);
-            } else if (typeof value === 'object' && value !== null && value.constructor === Object) {
-                Object.assign((element as any)[key], value);
-            } else {
-                element.setAttribute(key, value as string);
-            }
-        }
-        element.append(...content);
-        return element;
-    };
-
-    const removeTimestamp = (orig: string, entryTimestamp: Date): string => {
-        const message = orig.trim();
-        const i = message.indexOf(" ");
-        if (i === -1) return orig;
-
-        let ts = message.slice(0, i);
-        if (ts.endsWith("s")) {
-            const secs = parseFloat(ts.slice(0, -1));
-            if (!isNaN(secs)) return message.slice(i + 1);
-        }
-
-        if (ts.startsWith("[")) {
-            ts = ts.slice(1, -1);
-        }
-        const parsedTs = new Date(ts);
-        if (isNaN(parsedTs.getTime())) return orig;
-
-        parsedTs.setMilliseconds(0);
-        const truncatedTs = new Date(entryTimestamp.getTime());
-        truncatedTs.setMilliseconds(0);
-        if (parsedTs.getTime() !== truncatedTs.getTime()) return orig;
-
-        return message.slice(i + 1);
-    };
-
-    const replaceSeverity = (orig: string, severity: string): { message: string, severity: string } => {
-        const severityLevels = ["ERROR", "WARN", "INFO", "DEBUG"];
-        const message = orig.trim();
-        for (const level of severityLevels) {
-            if (message.startsWith(level)) {
-                return {
-                    message: message.slice(level.length + 1),
-                    severity: level
-                };
-            }
-        }
-        return { message: orig, severity: severity };
-    };
-
-    const formatRelative = (from: string, to: string): string => {
-        const deltaMs = new Date(to).getTime() - new Date(from).getTime();
-        const sec = ((deltaMs / 1000) % 60).toFixed(3);
-        const min = Math.floor((deltaMs / 60000) % 60);
-        const hr = Math.floor(deltaMs / 3600000);
-        return `${hr > 0 ? hr + 'h ' : ''}${min}m ${sec}s`;
-    };
-
-    const ansiToSpan = (str: string): HTMLElement => {
-        const ANSI_STYLE_MAP: { [key: string]: string } = {
-            '1': 'font-weight: bold', '3': 'font-style: italic', '4': 'text-decoration: underline',
-            '30': 'color: black', '31': 'color: red', '32': 'color: green',
-            '33': 'color: #b58900', '34': 'color: blue', '35': 'color: magenta',
-            '36': 'color: cyan', '37': 'color: white',
-            '90': 'color: gray', '91': 'color: lightcoral', '92': 'color: lightgreen',
-            '93': 'color: gold', '94': 'color: lightskyblue', '95': 'color: plum',
-            '96': 'color: lightcyan', '97': 'color: white',
-            '39': 'color: inherit'
-        };
-
-        const ESC_REGEX = /\u001b\[([0-9;]*)m/g;
-        let result = node("span");
-        let lastIndex = 0;
-        let currentStyles: string[] = [];
-
-        const flush = (text: string) => {
-            if (!text) return;
-            if (currentStyles.length > 0) {
-                result.append(node("span", { style: currentStyles.join('; ') }, text));
-            } else {
-                result.append(text);
-            }
-        };
-
-        for (const match of str.matchAll(ESC_REGEX)) {
-            const [fullMatch, codeStr] = match;
-            const index = match.index!;
-
-            flush(str.slice(lastIndex, index));
-
-            const codes = codeStr.split(';');
-            for (const code of codes) {
-                if (code === '0') {
-                    currentStyles = [];
-                    continue;
-                }
-                const style = ANSI_STYLE_MAP[code];
-                if (style) {
-                    const type = style.split(':')[0];
-                    currentStyles = currentStyles.filter(s => !s.startsWith(type));
-                    currentStyles.push(style);
-                }
-            }
-
-            lastIndex = index + fullMatch.length;
-        }
-
-        flush(str.slice(lastIndex));
-        return result;
-    };
+    const queryClient = useQueryClient();
 
     const tokenizeSearchQuery = (query: string): string[] => {
         const quoteCount = (query.match(/"/g) || []).length;
@@ -379,7 +232,7 @@ export function InspectViewer(): React.JSX.Element {
             accessorFn: (row) => row.messageText, // Use text for sorting/filtering
             header: 'Message',
             cell: (info) => (
-                <div dangerouslySetInnerHTML={{ __html: info.row.original.messageNode.innerHTML }} />
+                <div dangerouslySetInnerHTML={{ __html: info.row.original.messageHtml }} />
             ),
             enableSorting: false, // Disable sorting for complex HTML content
         },
@@ -424,139 +277,39 @@ export function InspectViewer(): React.JSX.Element {
         enableSortingRemoval: false,
     });
 
-    // Fetch test results
+    // Fetch + process log entries via react-query helper
     useEffect(() => {
-        const fetchTestResults = async () => {
-            if (!runId || !fullTestName) {
-                return;
-            }
+        if (!runId || !fullTestName) return;
+        setLoading(true);
+        queryClient.fetchQuery({
+            queryKey: ['petriLog', runId, architecture, testNameRemainder],
+            queryFn: () => fetchProcessedPetriLog(runId, architecture, testNameRemainder),
+            staleTime: 60 * 1000, // 1 min stale window for logs
+            gcTime: 5 * 60 * 1000,
+        }).then(entries => {
+            setLogEntries(entries as LogEntry[]);
+            setFilteredLogs(entries as LogEntry[]);
+        }).catch(err => {
+            console.error('❌ Error fetching test results:', err);
+            setLogEntries([]);
+            setFilteredLogs([]);
+        }).finally(() => setLoading(false));
+    }, [queryClient, runId, fullTestName, architecture, testNameRemainder]);
 
-            setLoading(true);
-            try {
-                // Try to construct the correct URL. The path structure is: runId/architecture/jobName/testName  
-                // If we have test result data with path, use it, otherwise try common job names
-                const tryFetchWithJobNames = async (jobNames: string[]) => {
-                    for (const _jobName of jobNames) { // _jobName intentionally unused; placeholder for potential future differentiation
-                        const tryUrl = `${baseUrl}/${runId}/${architecture}/${testNameRemainder}/petri.jsonl`;
-                        console.log('Trying URL:', tryUrl);
-                        try {
-                            const tryResponse = await fetch(tryUrl);
-                            if (tryResponse.ok) {
-                                return { response: tryResponse, url: tryUrl };
-                            }
-                        } catch {
-                            // ignore and try next
-                        }
-                    }
-                    throw new Error('Could not find petri.jsonl with any job name');
-                };
-
-                let url = '';
-                let response: Response;
-
-                if (testResult && testResult.path) {
-                    // Use the path from test result if available
-                    url = `${baseUrl}/${testResult.path}/petri.jsonl`;
-                    response = await fetch(url);
-                    if (!response.ok) {
-                        const result = await tryFetchWithJobNames(['default', 'ci', 'main', 'pr']);
-                        response = result.response;
-                        url = result.url;
-                    }
-                } else {
-                    // Try common job names
-                    const result = await tryFetchWithJobNames(['default', 'ci', 'main', 'pr']);
-                    response = result.response;
-                    url = result.url;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.text();
-
-                if (data.length === 0) {
-                    setLogEntries([]);
-                    setFilteredLogs([]);
-                    return;
-                }
-
-                let lines: any[];
-                try {
-                    lines = data.split("\n").filter(line => line.trim() !== "").map(line => JSON.parse(line));
-                } catch (parseError) {
-                    throw parseError;
-                }
-                lines.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-                const entries: LogEntry[] = [];
-                let start: string | null = null;
-
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const timestamp = line.timestamp;
-                    let message = line.message || "";
-                    let severity = line.severity || "INFO";
-                    const source = line.source || (line.attachment ? "attachment" : "unknown");
-
-                    let attachment = null;
-                    if (line.attachment) {
-                        attachment = new URL(line.attachment, url);
-                        if (line.attachment.endsWith(".png") && entries.length > 0) {
-                            entries[entries.length - 1].screenshot = attachment.toString();
-                            continue;
-                        }
-                    }
-
-                    if (!start) {
-                        start = line.timestamp;
-                    }
-                    const relative = start ? formatRelative(start, timestamp) : '0m 0.000s';
-
-                    message = removeTimestamp(message, new Date(line.timestamp));
-                    const r = replaceSeverity(message, severity);
-                    message = r.message;
-                    severity = r.severity;
-
-                    const messageNode = ansiToSpan(message);
-                    if (attachment) {
-                        if (messageNode.children.length > 0) {
-                            messageNode.append(" ");
-                        }
-                        if (line.attachment.includes('inspect')) {
-                            const link = node("a", { href: attachment.toString(), class: "attachment", target: "_blank", "data-inspect": "true" }, line.attachment);
-                            const rawLink = node("a", { href: attachment.toString(), class: "attachment", target: "_blank" }, "[raw]");
-                            messageNode.append(link, ' ', rawLink);
-                        } else {
-                            const link = node("a", { href: attachment.toString(), class: "attachment", target: "_blank" }, line.attachment);
-                            messageNode.append(link);
-                        }
-                    }
-
-                    entries.push({
-                        index: i,
-                        timestamp: timestamp,
-                        relative: relative,
-                        severity: severity,
-                        source: source,
-                        messageNode: messageNode,
-                        messageText: messageNode.textContent?.toLowerCase() || '',
-                        screenshot: null,
-                    });
-                }
-
-                setLogEntries(entries);
-                setFilteredLogs(entries);
-            } catch (error) {
-                console.error('❌ Error fetching test results:', error);
-            } finally {
-                setLoading(false);
+    // Intercept clicks on inspect attachment links to open overlay
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+            const anchor = target.closest('a[data-inspect="true"]') as HTMLAnchorElement | null;
+            if (anchor) {
+                e.preventDefault();
+                setInspectFileUrl(anchor.href);
             }
         };
-
-        fetchTestResults();
-    }, [runId, fullTestName, testResult]);
+        document.addEventListener('click', handleClick);
+        return () => document.removeEventListener('click', handleClick);
+    }, []);
 
     // Filter logs when search changes
     useEffect(() => {
@@ -635,7 +388,7 @@ export function InspectViewer(): React.JSX.Element {
                 relative: entry.relative,
                 severity: entry.severity,
                 source: entry.source,
-                message: (entry.messageNode.textContent || '').trim(),
+                message: entry.messageText.trim(),
             };
             if (entry.screenshot) jsonObj.screenshot = entry.screenshot;
             const jsonBlock = JSON.stringify(jsonObj, null, 2);
@@ -774,7 +527,7 @@ export function InspectViewer(): React.JSX.Element {
                 `}
             </style>
             <div className="common-page-header">
-                <InspectViewerHeader
+                <LogViewerHeader
                     runId={runId || 'unknown'}
                     architecture={architecture}
                     testNameRemainder={testNameRemainder}
@@ -863,6 +616,9 @@ export function InspectViewer(): React.JSX.Element {
                         </pre>
                     )}
                 </div>
+            )}
+            {inspectFileUrl && (
+                <InspectOverlay fileUrl={inspectFileUrl} onClose={() => setInspectFileUrl(null)} />
             )}
         </div>
     );

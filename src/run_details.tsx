@@ -8,13 +8,14 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { RunDetails, TestResult } from './fetch';
-import { getRunDetails } from './dataStore';
 import { Hamburger } from './hamburger';
 import { VirtualizedTable } from './VirtualizedTable';
 import { Link } from 'react-router-dom';
 import './styles/common.css';
 import './styles/runs.css';
 import './styles/run_details.css'
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchRunDetails } from './fetch';
 
 interface RunDetailsProps {
   runId: string;
@@ -61,7 +62,7 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
 
 export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); // retained for potential future spinner, intentionally unused after route changes
+  // (Spinner removed) Loading state previously unused; can be reintroduced if UI needs it later.
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'status', desc: false } // Sort by status ascending, failed tests first
@@ -74,27 +75,39 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
     setInternalFilter(searchFilter || '');
   }, [searchFilter]);
 
-  useEffect(() => {
-    const loadRunDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log(`🔍 Getting run details for run ID: ${runId}`);
-        const details = await getRunDetails(runId);
-        console.log(`✅ Successfully got run details:`, details);
-        console.log(`📊 Total tests found: ${details.tests?.length || 0}`);
-        console.log(`📋 Test results:`, details.tests);
-        setRunDetails(details);
-      } catch (err) {
-        console.error(`❌ Error getting run details for ${runId}:`, err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch run details');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const queryClient = useQueryClient();
 
-    loadRunDetails();
-  }, [runId]);
+  useEffect(() => {
+    let cancelled = false;
+  // (loading state removed)
+    setError(null);
+
+    queryClient
+      .fetchQuery({
+        queryKey: ['runDetails', runId],
+        // Pass queryClient down so petri.jsonl / petri.passed files discovered during listing get prefetched & cached
+        queryFn: () => fetchRunDetails(runId, queryClient),
+        staleTime: Infinity, // never goes stale
+        gcTime: 15 * 60 * 1000, // still garbage collect after 5 minutes unused
+      })
+      .then((details) => {
+        if (!cancelled) {
+          setRunDetails(details);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch run details');
+        }
+      })
+      .finally(() => {
+        // no-op (loading state removed)
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient, runId]);
 
   // Define columns for the test results table
   const columns = useMemo<ColumnDef<TestResult>[]>(() => [

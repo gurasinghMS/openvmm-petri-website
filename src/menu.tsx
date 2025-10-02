@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import './styles/hamburger.css';
+import './styles/menu.css';
 
 // New Hamburger drawer component for site navigation (replaces legacy header usage)
-export function Hamburger(): React.JSX.Element {
+export function Menu(): React.JSX.Element {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
     const currentPath = window.location.pathname;
@@ -44,10 +44,10 @@ export function Hamburger(): React.JSX.Element {
             <button
                 type="button"
                 aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-                className="hamburger-trigger"
+                className="menu-trigger"
                 onClick={toggle}
             >
-                <span className="hamburger-lines" aria-hidden="true">
+                <span className="menu-lines" aria-hidden="true">
                     <span />
                     <span />
                     <span />
@@ -55,14 +55,14 @@ export function Hamburger(): React.JSX.Element {
             </button>
             {open && createPortal(
                 <>
-                    <div className="hamburger-overlay" onClick={close} role="presentation" />
+                    <div className="menu-overlay" onClick={close} role="presentation" />
                     <nav
-                        className={open ? 'hamburger-drawer open' : 'hamburger-drawer'}
+                        className={open ? 'menu-drawer open' : 'menu-drawer'}
                         aria-hidden={!open}
                         aria-label="Primary"
                     >
-                        <div className="hamburger-drawer-header">Petri Test Viewer</div>
-                        <ul className="hamburger-nav-list" role="list">
+                        <div className="menu-drawer-header">Petri Test Viewer</div>
+                        <ul className="menu-nav-list" role="list">
                             <li>
                                 <button
                                     className={isActive('runs') ? 'drawer-link active' : 'drawer-link'}
@@ -109,4 +109,4 @@ export function Hamburger(): React.JSX.Element {
     );
 }
 
-export default Hamburger;
+export default Menu;

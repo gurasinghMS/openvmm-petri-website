@@ -11,8 +11,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import './styles/runs.css';
 import './styles/common.css';
 import { fetchRunData, RunData } from './fetch';
-import { Hamburger } from './hamburger';
-import { VirtualizedRunsTable } from './VirtualizedTable.tsx';
+import { Menu } from './menu.tsx';
+import { VirtualizedRunsTable } from './virtualized_table.tsx';
 import { useNavigate, Link } from 'react-router-dom';
 
 export function Runs(): React.JSX.Element {
@@ -81,11 +81,6 @@ export function Runs(): React.JSX.Element {
         />
       </div>
       <VirtualizedRunsTable table={table} />
-      {filteredRuns.length === 0 && runs.length > 0 && (
-        <div className="no-results" style={{ padding: '1rem' }}>
-          No runs match your search criteria.
-        </div>
-      )}
     </div>
   );
 }
@@ -278,7 +273,7 @@ export function RunsHeader({
     <>
       <div className="runs-header-left-section">
         <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Hamburger />
+          <Menu />
           <h3 style={{ margin: 0 }}>
             <Link to="/runs" className="common-page-path" style={{ color: 'inherit' }}>Runs</Link>
           </h3>

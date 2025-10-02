@@ -632,7 +632,8 @@ export async function fetchProcessedPetriLog(
     let screenshot: string | null = null;
     if (rec.attachment) {
       const attachmentUrl = new URL(rec.attachment, url).toString();
-      if (rec.attachment.endsWith('.png') && entries.length > 0) {
+      // Only treat PNGs as screenshots if they're NOT inspect files
+      if (rec.attachment.endsWith('.png') && !rec.attachment.includes('inspect') && entries.length > 0) {
         // associate with previous entry
         entries[entries.length - 1].screenshot = attachmentUrl;
         continue; // don't emit separate row

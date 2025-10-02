@@ -8,8 +8,8 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { RunDetails, TestResult } from './fetch';
-import { Hamburger } from './hamburger';
-import { VirtualizedTable } from './VirtualizedTable';
+import { Menu } from './menu';
+import { VirtualizedTable } from './virtualized_table';
 import { Link } from 'react-router-dom';
 import './styles/common.css';
 import './styles/runs.css';
@@ -37,7 +37,7 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
     <>
       <div className="runs-header-left-section">
         <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Hamburger />
+          <Menu />
           <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <Link to="/runs" className="common-page-path" style={{ color: 'inherit' }}>Runs</Link>
             <span style={{ opacity: 0.65 }}>/</span>
@@ -79,7 +79,7 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
 
   useEffect(() => {
     let cancelled = false;
-  // (loading state removed)
+    // (loading state removed)
     setError(null);
 
     queryClient

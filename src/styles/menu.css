@@ -1,7 +1,7 @@
 /* Styles scoped for the new Hamburger drawer component */
 
 /* Trigger (small button placed inline near page title) */
-.hamburger-trigger {
+.menu-trigger {
     background: #ffffff;
     /* white icon background */
     border: none;
@@ -18,20 +18,20 @@
     /* no shadow for a flatter look */
 }
 
-.hamburger-trigger:hover,
-.hamburger-trigger:focus-visible {
+.menu-trigger:hover,
+.menu-trigger:focus-visible {
     background: #f2f2f2;
     outline: none;
 }
 
-.hamburger-lines {
+.menu-lines {
     display: inline-flex;
     flex-direction: column;
     gap: 3px;
     /* tighter gap for smaller icon */
 }
 
-.hamburger-lines span {
+.menu-lines span {
     width: 16px;
     /* reduced width */
     height: 2px;
@@ -42,17 +42,17 @@
 }
 
 /* Overlay */
-.hamburger-overlay {
+.menu-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.25);
     /* slightly lighter and no blur */
     /* removed blur for cleaner overlay */
     z-index: 5000;
-    animation: hamburger-fade 120ms ease-out;
+    animation: menu-fade 120ms ease-out;
 }
 
-@keyframes hamburger-fade {
+@keyframes menu-fade {
     from {
         opacity: 0;
     }
@@ -63,7 +63,7 @@
 }
 
 /* Drawer */
-.hamburger-drawer {
+.menu-drawer {
     position: fixed;
     top: 0;
     left: 0;
@@ -82,11 +82,11 @@
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
-.hamburger-drawer.open {
+.menu-drawer.open {
     transform: translateX(0);
 }
 
-.hamburger-drawer-header {
+.menu-drawer-header {
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -97,7 +97,7 @@
     font-family: Arial, sans-serif;
 }
 
-.hamburger-nav-list {
+.menu-nav-list {
     list-style: none;
     margin: 0;
     padding: 0.75rem 0.85rem 1rem;
@@ -162,7 +162,7 @@
         background: #525252;
     }
 
-    .hamburger-trigger:hover {
+    .menu-trigger:hover {
         background: #515151;
     }
 }

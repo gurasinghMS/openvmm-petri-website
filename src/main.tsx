@@ -4,7 +4,6 @@ import { HashRouter } from 'react-router-dom';
 import './styles/main.css';
 import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
-import { Tests } from './tests';
 import { RunDetailsView } from './run_details';
 import { LogViewer } from './log_viewer';
 import { Navigate, useParams } from 'react-router-dom';
@@ -43,7 +42,6 @@ function Content() {
       <Route path="runs/:runId/:architecture/:testName" element={<LogViewer />} />
       {/* Legacy route (single encoded segment containing architecture/testName) retained for backward compatibility */}
       <Route path="runs/:runId/:testName" element={<LogViewer />} />
-      <Route path="tests" element={<Tests />} />
     </Routes>
   );
 }

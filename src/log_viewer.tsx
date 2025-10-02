@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Hamburger } from './hamburger';
+import { Menu } from './menu';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { VirtualizedTable } from './VirtualizedTable';
+import { VirtualizedTable } from './virtualized_table';
 import { InspectOverlay } from './inspect';
 import { fetchProcessedPetriLog, ProcessedLogEntry } from './fetch';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
                         flex: 1
                     }}
                 >
-                    <Hamburger />
+                    <Menu />
                     <h3
                         style={{
                             margin: 0,

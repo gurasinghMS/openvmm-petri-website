@@ -74,7 +74,7 @@ export function Menu(): React.JSX.Element {
                             <li>
                                 <button
                                     className={isActive('tests') ? 'drawer-link active' : 'drawer-link'}
-                                    onClick={() => navigateAndClose('/tests')}
+                                // onClick={() => navigateAndClose('/tests')}
                                 >
                                     Tests
                                 </button>

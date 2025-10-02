@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,24 +8,16 @@ import './styles/common.css';
 import { fetchRunData, RunData } from './fetch';
 import { Menu } from './menu.tsx';
 import { VirtualizedRunsTable } from './virtualized_table.tsx';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { SearchInput } from './search';
+import { createColumns, defaultSorting } from './table_defs/runs';
 
 export function Runs(): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
   const [branchFilter, setBranchFilter] = useState<string>('all');
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [searchFilter, setSearchFilter] = useState<string>('');
 
-  // Read search filter from URL params
-  const getSearchFilter = (): string => {
-    const params = new URLSearchParams(location.search);
-    return params.get('search') ?? '';
-  };
-
-  const internalFilter = getSearchFilter();
-
-  // Query client should allow us to cache and reuse the data.
+  // Fetch the relevant data
   const queryClient = useQueryClient();
   useEffect(() => {
     queryClient.fetchQuery({
@@ -41,42 +28,13 @@ export function Runs(): React.JSX.Element {
     }).then(setRuns);
   }, [queryClient]);
 
-  // Default sort by creation time, newest first
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'creationTime', desc: true }
-  ]);
-
-  // Filter runs based on branch selection and search terms
-  const filteredRuns = useMemo(() => {
-    let branchFiltered = branchFilter === 'all' ? runs : runs.filter(run => run.metadata.ghBranch === branchFilter);
-    const terms = internalFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (terms.length === 0) return branchFiltered;
-    console.log("Filtering with terms:", terms);
-    return branchFiltered.filter(run => {
-      // Search in run name, status, branch, PR, and PR title
-      const status = run.metadata.petriFailed === 0 ? 'passed' : 'failed';
-      const pr = run.metadata.ghPr ? `${run.metadata.ghPr} ${run.metadata.prTitle || ''}` : '';
-      const haystack = `${run.name} ${status} ${run.metadata.ghBranch || ''} ${pr}`.toLowerCase();
-      return terms.every(term => haystack.includes(term));
-    });
-  }, [runs, branchFilter, internalFilter]);
-
+  // Get the table definition (columns and default sorting)
+  const navigate = useNavigate();
+  const [sorting, setSorting] = useState<SortingState>(defaultSorting);
   const columns = useMemo(() => createColumns((runId: string) => navigate(`/runs/${runId}`)), [navigate]);
 
-  const table = useReactTable({
-    data: filteredRuns,
-    columns,
-    state: {
-      sorting,
-    },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    enableSorting: true,
-    enableSortingRemoval: false,
-    debugTable: false,
-  });
+  // Filter runs based on branch selection and search terms
+  const filteredRuns = useMemo(() => filterRuns(runs, branchFilter, searchFilter), [runs, branchFilter, searchFilter]);
 
   return (
     <div className="common-page-display">
@@ -84,224 +42,89 @@ export function Runs(): React.JSX.Element {
         <RunsHeader
           branchFilter={branchFilter}
           setBranchFilter={setBranchFilter}
+          searchFilter={searchFilter}
+          setSearchFilter={setSearchFilter}
           resultCount={filteredRuns.length}
         />
       </div>
-      <VirtualizedRunsTable table={table} />
+      <VirtualizedRunsTable
+        data={filteredRuns}
+        columns={columns}
+        sorting={sorting}
+        onSortingChange={setSorting}
+      />
     </div>
   );
 }
 
-// Define the columns for the runs table
-const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[] => {
-  return [
-    {
-      accessorKey: 'name',
-      header: 'Run',
-      enableSorting: true,
-      cell: (info) => {
-        const runId = info.getValue<string>().replace('runs/', '');
-        return (
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              onRunClick(runId);
-            }}
-            className="run-name-link"
-          >
-            {runId}
-          </a>
-        );
-      },
-      sortingFn: (rowA, rowB, columnId) => {
-        const a = rowA.getValue(columnId) as string;
-        const b = rowB.getValue(columnId) as string;
-        return a.localeCompare(b);
-      },
-    },
-    {
-      accessorKey: 'creationTime',
-      header: 'Created',
-      enableSorting: true,
-      cell: (info) => (
-        <span className="created-date">{info.getValue<Date>().toLocaleString()}</span>
-      ),
-      sortingFn: (rowA, rowB, columnId) => {
-        const a = rowA.getValue(columnId) as Date;
-        const b = rowB.getValue(columnId) as Date;
-        return a.getTime() - b.getTime();
-      },
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      enableSorting: true,
-      accessorFn: (row) => row.metadata.petriFailed === 0 ? 'passed' : 'failed',
-      cell: (info) => {
-        const status = info.getValue<string>();
-        return (
-          <div className="common-status-cell">
-            <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      id: 'failed',
-      accessorKey: 'metadata.petriFailed',
-      header: 'Failed',
-      enableSorting: true,
-      cell: (info) => (
-        <span className="failed-count">{info.getValue<number>()}</span>
-      ),
-    },
-    {
-      id: 'total',
-      header: 'Total',
-      enableSorting: true,
-      accessorFn: (row) => row.metadata.petriPassed + row.metadata.petriFailed,
-      cell: (info) => (
-        <span className="total-count">{info.getValue<number>()}</span>
-      ),
-    },
-    {
-      accessorKey: 'metadata.ghBranch',
-      header: 'Branch',
-      enableSorting: true,
-      cell: (info) => {
-        const branch = info.getValue<string>() || '';
-        return (
-          <div
-            className="branch-name"
-            title={branch}
-            style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              lineHeight: '1.25rem',
-            }}
-          >
-            {branch}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'metadata.ghPr',
-      header: 'PR',
-      enableSorting: true,
-      accessorFn: (row) => {
-        const pr = row.metadata.ghPr;
-        const prTitle = row.metadata.prTitle;
-        // Combine PR number and title for searching
-        return pr ? `${pr} ${prTitle || ''}`.trim() : '';
-      },
-      cell: (info) => {
-        const row = info.row.original;
-        const pr = row.metadata.ghPr;
-        const prTitle = row.metadata.prTitle;
-        const fullText = pr ? `#${pr}${prTitle ? ` ${prTitle}` : ''}` : '';
-        return pr ? (
-          <div className="pr-cell">
-            <a
-              href={`https://github.com/microsoft/openvmm/pull/${pr}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="pr-combined-link"
-              title={prTitle ? `#${pr} ${prTitle}` : `PR #${pr}`}
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                lineHeight: '1.25rem',
-              }}
-            >
-              {fullText}
-            </a>
-          </div>
-        ) : (
-          <span className="no-pr">-</span>
-        );
-      },
-      sortingFn: (rowA, rowB) => {
-        const a = rowA.original.metadata.ghPr;
-        const b = rowB.original.metadata.ghPr;
-        if (!a && !b) return 0;
-        if (!a) return 1;
-        if (!b) return -1;
-        return parseInt(a) - parseInt(b);
-      },
-    },
-    {
-      id: 'ghRun', // distinct id to avoid clashing with first 'name' accessor
-      accessorKey: 'name',
-      header: 'GH Run',
-      enableSorting: true,
-      cell: (info) => {
-        const runId = info.getValue<string>().replace('runs/', '');
-        return (
-          <a
-            href={`https://github.com/microsoft/openvmm/actions/runs/${runId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="run-name-link"
-          >
-            {runId}
-          </a>
-        );
-      },
-      sortingFn: (rowA, rowB, columnId) => {
-        const a = rowA.getValue(columnId) as string;
-        const b = rowB.getValue(columnId) as string;
-        return a.localeCompare(b);
-      },
-    },
-  ]
-};
-
 interface RunsHeaderProps {
   branchFilter: string;
   setBranchFilter: (branch: string) => void;
+  searchFilter: string;
+  setSearchFilter: (filter: string) => void;
   resultCount: number;
 }
 
 export function RunsHeader({
   branchFilter,
   setBranchFilter,
+  searchFilter,
+  setSearchFilter,
   resultCount,
 }: RunsHeaderProps): React.JSX.Element {
   return (
     <>
-      <div className="runs-header-left-section">
-        <div className="runs-header-title-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="common-header-left">
+        <div className="common-header-title">
           <Menu />
-          <h3 style={{ margin: 0 }}>
-            <Link to="/runs" className="common-page-path" style={{ color: 'inherit' }}>Runs</Link>
+          <h3>
+            <Link to="/runs" className="common-header-path">Runs</Link>
           </h3>
         </div>
-        <div className="common-filter-buttons">
+        <div className="common-header-filter-buttons">
           <button
-            className={`common-filter-btn ${branchFilter === 'all' ? 'active' : ''}`}
+            className={`common-header-filter-btn ${branchFilter === 'all' ? 'active' : ''}`}
             onClick={() => setBranchFilter('all')}
           >
             all
           </button>
           <button
-            className={`common-filter-btn ${branchFilter === 'main' ? 'active' : ''}`}
+            className={`common-header-filter-btn ${branchFilter === 'main' ? 'active' : ''}`}
             onClick={() => setBranchFilter('main')}
           >
             main
           </button>
         </div>
       </div>
-      <div className="runs-header-right-section">
-        <SearchInput />
-        <span className="results-count">
+      <div className="common-header-right">
+        <SearchInput value={searchFilter} onChange={setSearchFilter} />
+        <span className="common-result-count">
           {resultCount} runs
         </span>
       </div>
     </>
   );
+}
+
+/**
+ * filterRuns filters the list of runs based on the selected branch and search terms.
+ * 
+ * - Branch filtering is applied first: if 'all' is selected, all runs are included; otherwise, only runs matching the selected branch are kept.
+ * - Search string is split into terms (by whitespace), and each run is checked
+ *   to see if ALL terms are present.
+ * - The searchable fields include: run name, status (passed/failed), branch name, PR number, and PR title.
+ * - The filtering is case-insensitive.
+ */
+function filterRuns(runs: RunData[], branchFilter: string, searchFilter: string): RunData[] {
+  let branchFiltered = branchFilter === 'all' ? runs : runs.filter(run => run.metadata.ghBranch === branchFilter);
+  const terms = searchFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return branchFiltered;
+  console.log("Filtering with terms:", terms);
+  return branchFiltered.filter(run => {
+    // Search in run name, status, branch, PR, and PR title
+    const status = run.metadata.petriFailed === 0 ? 'passed' : 'failed';
+    const pr = run.metadata.ghPr ? `${run.metadata.ghPr} ${run.metadata.prTitle || ''}` : '';
+    const haystack = `${run.name} ${status} ${run.metadata.ghBranch || ''} ${pr}`.toLowerCase();
+    return terms.every(term => haystack.includes(term));
+  });
 }

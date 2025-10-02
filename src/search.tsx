@@ -1,49 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './styles/common.css';
 
 interface SearchInputProps {
+    value: string;
+    onChange: (value: string) => void;
     style?: React.CSSProperties;
     inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export function SearchInput({ style, inputRef }: SearchInputProps): React.JSX.Element {
+export function SearchInput({ value, onChange, style, inputRef }: SearchInputProps): React.JSX.Element {
     const location = useLocation();
     const navigate = useNavigate();
+    const isInitialMount = useRef(true);
 
-    // Read initial value from URL params
-    const getSearchParam = (): string => {
-        const params = new URLSearchParams(location.search);
-        return params.get('search') ?? '';
-    };
-
-    const [value, setValue] = useState<string>(getSearchParam());
-
-    // Sync with URL when location changes
+    // On mount: read search parameter from URL and update caller's filter
     useEffect(() => {
-        setValue(getSearchParam());
-    }, [location.search]);
-
-    // Update URL when value changes
-    const handleChange = (newValue: string) => {
-        setValue(newValue);
         const params = new URLSearchParams(location.search);
-        if (newValue) {
-            params.set('search', newValue);
+        const searchParam = params.get('search');
+        if (searchParam !== null && searchParam !== value) {
+            onChange(searchParam);
+        }
+        isInitialMount.current = false;
+    }, []); // Only run on mount
+
+    // When value changes (after initial mount), update the URL
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (value) {
+            params.set('search', value);
         } else {
             params.delete('search');
         }
-        navigate(`${location.pathname}?${params.toString()}`, { replace: true });
-    };
 
-    // Initialize search param if it doesn't exist
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        if (!params.has('search')) {
-            params.set('search', '');
-            navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+        const newSearch = params.toString();
+        const newPath = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+
+        // Only navigate if the URL actually changed
+        if (location.pathname + location.search !== newPath) {
+            navigate(newPath, { replace: true });
         }
-    }, []);
+    }, [value, location.pathname]);
+
+    const handleChange = (newValue: string) => {
+        onChange(newValue);
+    };
 
     return (
         <div style={{ position: 'relative', display: 'inline-block' }}>

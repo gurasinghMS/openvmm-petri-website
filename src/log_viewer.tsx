@@ -6,10 +6,6 @@ import { InspectOverlay } from './inspect';
 import { fetchProcessedPetriLog, ProcessedLogEntry } from './fetch';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-    useReactTable,
-    getCoreRowModel,
-    getSortedRowModel,
-    getFilteredRowModel,
     ColumnDef,
     SortingState,
 } from '@tanstack/react-table';
@@ -21,13 +17,15 @@ interface InspectViewerHeaderProps {
     architecture: string;
     testNameRemainder: string; // portion after architecture
     fullTestName: string; // architecture + '/' + remainder
+    searchFilter: string;
+    setSearchFilter: (filter: string) => void;
     searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 // Display entry shape sourced from fetchProcessedPetriLog
 interface LogEntry extends ProcessedLogEntry { }
 
-function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchInputRef }: InspectViewerHeaderProps): React.JSX.Element {
+function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchFilter, setSearchFilter, searchInputRef }: InspectViewerHeaderProps): React.JSX.Element {
     const encodedArchitecture = encodeURIComponent(architecture);
     const encodedRemainder = encodeURIComponent(testNameRemainder);
 
@@ -97,7 +95,7 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
                 </div>
             </div>
             <div className="runs-header-right-section">
-                <SearchInput inputRef={searchInputRef} />
+                <SearchInput value={searchFilter} onChange={setSearchFilter} inputRef={searchInputRef} />
             </div>
         </>
     );
@@ -107,13 +105,7 @@ export function LogViewer(): React.JSX.Element {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Read search filter from URL params
-    const getSearchFilter = (): string => {
-        const params = new URLSearchParams(location.search);
-        return params.get('search') ?? '';
-    };
-
-    const searchFilter = getSearchFilter();
+    const [searchFilter, setSearchFilter] = useState<string>('');
     const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -240,21 +232,6 @@ export function LogViewer(): React.JSX.Element {
             enableSorting: false,
         }
     ], []);
-
-    // Create the table
-    const table = useReactTable({
-        data: filteredLogs,
-        columns,
-        state: {
-            sorting,
-        },
-        onSortingChange: setSorting,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        enableSorting: true,
-        enableSortingRemoval: false,
-    });
 
     // Fetch + process log entries via react-query helper
     useEffect(() => {
@@ -513,6 +490,8 @@ export function LogViewer(): React.JSX.Element {
                     architecture={architecture}
                     testNameRemainder={testNameRemainder}
                     fullTestName={fullTestName}
+                    searchFilter={searchFilter}
+                    setSearchFilter={setSearchFilter}
                     searchInputRef={searchInputRef}
                 />
             </div>
@@ -524,7 +503,10 @@ export function LogViewer(): React.JSX.Element {
                     </div>
                 ) : (
                     <VirtualizedTable<LogEntry>
-                        table={table}
+                        data={filteredLogs}
+                        columns={columns}
+                        sorting={sorting}
+                        onSortingChange={setSorting}
                         columnWidthMap={{
                             relative: 100,
                             severity: 80,

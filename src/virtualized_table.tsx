@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { flexRender, type Table, type Row } from '@tanstack/react-table';
+import { flexRender, type Table, type Row, type ColumnDef, type SortingState, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel } from '@tanstack/react-table';
 import { RunData } from './fetch';
 
 export interface VirtualizedTableProps<TData extends object> {
-    table: Table<TData>;
+    data: TData[];
+    columns: ColumnDef<TData, any>[];
+    sorting: SortingState;
+    onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
     columnWidthMap?: Record<string, number>;
     estimatedRowHeight?: number; // default 50
     overscan?: number; // default 10
@@ -25,7 +28,10 @@ function defaultInferRowClass(row: Row<any>): string {
 }
 
 export function VirtualizedTable<TData extends object>({
-    table,
+    data,
+    columns,
+    sorting,
+    onSortingChange,
     columnWidthMap,
     estimatedRowHeight = 50,
     overscan = 10,
@@ -33,6 +39,22 @@ export function VirtualizedTable<TData extends object>({
     onRowClick,
     scrollToIndex,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
+    // Create the table inside this component
+    const table = useReactTable({
+        data,
+        columns,
+        state: {
+            sorting,
+        },
+        onSortingChange,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        enableSorting: true,
+        enableSortingRemoval: false,
+        debugTable: false,
+    });
+
     const { rows } = table.getRowModel();
 
     const tableContainerRef = useRef<HTMLDivElement>(null);

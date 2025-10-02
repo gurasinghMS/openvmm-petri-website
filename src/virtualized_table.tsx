@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { flexRender, type Table, type Row, type ColumnDef, type SortingState, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel } from '@tanstack/react-table';
-import { RunData } from './fetch';
 
 export interface VirtualizedTableProps<TData extends object> {
     data: TData[];
@@ -246,15 +245,6 @@ export function VirtualizedTable<TData extends object>({
         </div>
     );
 }
-
-// Backwards-compatible specialized export for existing RunData usage
-export type RunsTableInstance = Table<RunData>;
-export interface VirtualizedRunsTableProps extends VirtualizedTableProps<RunData> { }
-export function VirtualizedRunsTable(props: VirtualizedRunsTableProps) {
-    return <VirtualizedTable<RunData> {...props} />;
-}
-
-export default VirtualizedRunsTable;
 
 // ===================== Extracted Effect Helpers =====================
 

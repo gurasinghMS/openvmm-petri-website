@@ -1,6 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
 import { TestResult } from '../fetch';
+import '../styles/run_details.css';
 
 // Define columns for the test results table
 export const createColumns = (runId: string): ColumnDef<TestResult>[] => [

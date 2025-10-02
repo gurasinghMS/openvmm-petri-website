@@ -5,12 +5,10 @@ import { VirtualizedTable } from './virtualized_table';
 import { InspectOverlay } from './inspect';
 import { fetchProcessedPetriLog, ProcessedLogEntry } from './fetch';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-    ColumnDef,
-    SortingState,
-} from '@tanstack/react-table';
+import { SortingState } from '@tanstack/react-table';
 import './styles/common.css';
 import { SearchInput } from './search';
+import { createColumns } from './table_defs/log_viewer';
 
 interface InspectViewerHeaderProps {
     runId: string;
@@ -31,17 +29,11 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
 
     return (
         <>
-            <div className="runs-header-left-section" style={{ minWidth: 0, flex: 1, display: 'flex' }}>
+            <div className="common-header-left" style={{ minWidth: 0, flex: 1, display: 'flex' }}>
                 <div
-                    className="runs-header-title-section"
+                    className="common-header-title"
                     style={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        overflow: 'hidden',
                         minWidth: 0,
-                        flex: 1
                     }}
                 >
                     <Menu />
@@ -57,11 +49,11 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
                         }}
                     >
                         <span style={{ flexShrink: 0 }}>../</span>
-                        <Link to={`/runs/${runId}`} className="common-page-path" style={{ color: 'inherit', flexShrink: 0 }}>{runId}</Link>
+                        <Link to={`/runs/${runId}`} className="common-header-path">{runId}</Link>
                         <span style={{ flexShrink: 0 }}>/</span>
                         <Link
                             to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
-                            className="common-page-path"
+                            className="common-header-path"
                             style={{
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -177,61 +169,7 @@ export function LogViewer(): React.JSX.Element {
     };
 
     // Define columns for the virtualized table
-    const columns = useMemo<ColumnDef<LogEntry>[]>(() => [
-        {
-            accessorKey: 'relative',
-            header: 'Timestamp',
-            cell: (info) => (
-                <span title={info.row.original.timestamp}>
-                    {info.getValue() as string}
-                </span>
-            ),
-            enableSorting: true,
-        },
-        {
-            accessorKey: 'severity',
-            header: 'Severity',
-            enableSorting: false,
-        },
-        {
-            accessorKey: 'source',
-            header: 'Source',
-            enableSorting: false,
-        },
-        {
-            id: 'message',
-            accessorFn: (row) => row.messageText, // Use text for sorting/filtering
-            header: 'Message',
-            cell: (info) => (
-                <div dangerouslySetInnerHTML={{ __html: info.row.original.messageHtml }} />
-            ),
-            enableSorting: false, // Disable sorting for complex HTML content
-        },
-        {
-            id: 'screenshot',
-            header: 'Screenshot',
-            cell: (info) => {
-                const screenshot = info.row.original.screenshot;
-                return screenshot ? (
-                    <img
-                        src={screenshot}
-                        alt="Screenshot"
-                        style={{
-                            maxWidth: '100px',
-                            maxHeight: '50px',
-                            cursor: 'pointer',
-                            objectFit: 'contain'
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setModalContent({ type: 'image', content: screenshot });
-                        }}
-                    />
-                ) : '';
-            },
-            enableSorting: false,
-        }
-    ], []);
+    const columns = useMemo(() => createColumns(setModalContent), []);
 
     // Fetch + process log entries via react-query helper
     useEffect(() => {

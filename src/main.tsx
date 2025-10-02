@@ -4,7 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import './styles/main.css';
 import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
-import { RunDetailsView } from './run_details';
+import { RunDetails } from './run_details';
 import { LogViewer } from './log_viewer';
 import { Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18,7 +18,7 @@ void queryClient.prefetchQuery({
   queryKey: ['runs'],
   queryFn: () => fetchRunData(queryClient),
   staleTime: 3 * 60 * 1000,
-  gcTime: 5 * 60 * 1000,
+  gcTime: 3 * 60 * 1000,
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -37,20 +37,18 @@ function Content() {
       <Route path="/" element={<Navigate to="/runs" replace />} />
       <Route path="runs" element={<Runs />} />
       {/* Route for individual run details */}
-      <Route path="runs/:runId" element={<RunDetailsRouteWrapper />} />
+      <Route path="runs/:runId" element={<RunDetailsRouter />} />
       {/* New route structure: /runs/:runId/:architecture/:testName (testName segment has internal slashes encoded) */}
       <Route path="runs/:runId/:architecture/:testName" element={<LogViewer />} />
-      {/* Legacy route (single encoded segment containing architecture/testName) retained for backward compatibility */}
-      <Route path="runs/:runId/:testName" element={<LogViewer />} />
     </Routes>
   );
 }
 
 // Lightweight wrapper to adapt route params to existing RunDetailsView component props
-function RunDetailsRouteWrapper() {
+function RunDetailsRouter() {
   const { runId } = useParams();
   if (!runId) {
     return <div style={{ padding: '1rem' }}>Run ID is missing.</div>;
   }
-  return <RunDetailsView runId={runId} />;
+  return <RunDetails runId={runId} />;
 }

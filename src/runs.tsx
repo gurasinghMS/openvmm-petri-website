@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  SortingState,
-} from '@tanstack/react-table';
-import { useQueryClient } from '@tanstack/react-query';
-import './styles/runs.css';
 import './styles/common.css';
+import React, { useState, useEffect, useMemo } from 'react';
+import { SortingState } from '@tanstack/react-table';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchRunData, RunData } from './fetch';
 import { Menu } from './menu.tsx';
-import { VirtualizedRunsTable } from './virtualized_table.tsx';
+import { VirtualizedTable } from './virtualized_table.tsx';
 import { useNavigate, Link } from 'react-router-dom';
 import { SearchInput } from './search';
 import { createColumns, defaultSorting } from './table_defs/runs';
@@ -47,7 +44,7 @@ export function Runs(): React.JSX.Element {
           resultCount={filteredRuns.length}
         />
       </div>
-      <VirtualizedRunsTable
+      <VirtualizedTable
         data={filteredRuns}
         columns={columns}
         sorting={sorting}

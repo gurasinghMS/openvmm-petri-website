@@ -26,6 +26,8 @@ export function SearchInput({ value, onChange, style, inputRef }: SearchInputPro
 
     // When value changes (after initial mount), update the URL
     useEffect(() => {
+        if (isInitialMount.current) return; // Skip on initial mount
+
         const params = new URLSearchParams(location.search);
         if (value) {
             params.set('search', value);
@@ -40,7 +42,7 @@ export function SearchInput({ value, onChange, style, inputRef }: SearchInputPro
         if (location.pathname + location.search !== newPath) {
             navigate(newPath, { replace: true });
         }
-    }, [value, location.pathname]);
+    }, [value, location.pathname, navigate, location.search]);
 
     const handleChange = (newValue: string) => {
         onChange(newValue);

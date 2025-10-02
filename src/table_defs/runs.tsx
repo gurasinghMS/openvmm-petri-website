@@ -1,5 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { RunData } from '../fetch';
+import '../styles/runs.css';
 
 export const defaultSorting = [
     { id: 'creationTime', desc: true }

@@ -23,7 +23,7 @@ export interface TestResult {
   duration?: number;
 }
 
-export interface RunDetails {
+export interface RunDetailsData {
   runNumber: string;
   tests: TestResult[];
 }
@@ -234,7 +234,7 @@ export async function fetchRunData(queryClient?: QueryClient): Promise<RunData[]
 }
 
 // Function to parse detailed run data from XML
-function parseRunDetails(xmlText: string, runNumber: string, queryClient?: QueryClient): RunDetails {
+function parseRunDetails(xmlText: string, runNumber: string, queryClient?: QueryClient): RunDetailsData {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -361,7 +361,7 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient?: Query
  * For petri.jsonl we retain the entry for 1 hour (stale + GC) so subsequent
  * navigation to an individual test log can hydrate instantly without a network roundtrip.
  */
-export async function fetchRunDetails(runNumber: string, queryClient?: QueryClient): Promise<RunDetails> {
+export async function fetchRunDetails(runNumber: string, queryClient?: QueryClient): Promise<RunDetailsData> {
   try {
     console.log(`Fetching detailed test data for run ${runNumber}...`);
 

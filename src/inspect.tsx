@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * Port of old inspect.html functionality into a React overlay component.
- * Follows the original implementation as closely as possible while adapting to React.
+ * Follows the original implementation closely, using direct DOM manipulation
+ * for expand/collapse to maintain performance.
  */
 
 // ---------------- Parsing Logic (unchanged structure) ----------------
@@ -73,67 +74,235 @@ function parseInspectNode(input: string): InspectObject {
 
 // ---------------- Formatting / Utilities ----------------
 
-// (Retained from original for reference; not needed directly in React tree, so commented)
-// function formatValue(v: InspectPrimitive): string {
-//   switch (v.type) {
-//     case 'string':
-//     case 'boolean':
-//     case 'number':
-//     case 'bytes': return String(v.value);
-//     case 'unevaluated': return '⏳';
-//     case 'error': return `❌ ${v.value}`;
-//   }
-// }
+function formatValue(v: InspectPrimitive): string {
+    switch (v.type) {
+        case 'string':
+        case 'boolean':
+        case 'number':
+        case 'bytes': return String(v.value);
+        case 'unevaluated': return '⏳';
+        case 'error': return `❌ ${v.value}`;
+    }
+}
+
+function node(tag: string, attrs: Record<string, any>, ...children: (string | Node)[]): HTMLElement {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'class') el.className = v;
+        else if (k === 'style') Object.assign(el.style, v);
+        else el.setAttribute(k, v);
+    }
+    for (const child of children) {
+        if (typeof child === 'string') el.appendChild(document.createTextNode(child));
+        else el.appendChild(child);
+    }
+    return el;
+}
+
+function highlightMatch(str: string, filter: string): HTMLElement | string {
+    if (!filter) return str;
+    const lowerStr = str.toLowerCase();
+    const lowerFilter = filter.toLowerCase();
+    const index = lowerStr.indexOf(lowerFilter);
+    if (index === -1) return str;
+    return node('span', {},
+        str.slice(0, index),
+        node('span', { class: 'highlight' }, str.slice(index, index + filter.length)),
+        str.slice(index + filter.length)
+    );
+}
 
 interface InspectOverlayProps {
     fileUrl: string;           // Absolute URL (already resolved)
     onClose: () => void;       // Close callback
 }
 
-// interface FlatTreeNode { key: string; value: InspectNode; path: string } // unused
-
 export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [root, setRoot] = useState<InspectObject | null>(null);
     const [filter, setFilter] = useState('');
-    const [selectedPath, setSelectedPath] = useState<string>('');
-    const [expanded, setExpanded] = useState<Record<string, boolean>>({ '': true });
+    const [allExpanded, setAllExpanded] = useState(true);
     const filterInputRef = useRef<HTMLInputElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const contentsRef = useRef<HTMLDivElement>(null);
+    const selectedPathRef = useRef<string>('');
+    const rootRef = useRef<InspectObject | null>(null);
+    const allToggleButtonsRef = useRef<HTMLElement[]>([]);
 
-    // Initialize selected path from hash (same behavior as original)
-    useEffect(() => {
-        const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
-        if (hash) setSelectedPath(hash);
-    }, [fileUrl]);
+    const fileName = (() => {
+        try { const u = new URL(fileUrl); return u.pathname.split('/').filter(Boolean).slice(-1)[0] || fileUrl; } catch { return fileUrl; }
+    })();
 
+    // Fetch and parse the inspect file
     useEffect(() => {
         let cancelled = false;
-        setLoading(true); setError(null); setRoot(null);
+        setLoading(true); setError(null);
         (async () => {
             try {
                 const resp = await fetch(fileUrl);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const text = await resp.text();
                 const parsed = parseInspectNode(text);
-                if (!cancelled) { setRoot(parsed); }
+                if (!cancelled) {
+                    rootRef.current = parsed;
+                    setLoading(false);
+                    // Hash-based selection removed - not needed in overlay
+                }
             } catch (e: any) {
-                if (!cancelled) setError(e.message || String(e));
-            } finally { if (!cancelled) setLoading(false); }
+                if (!cancelled) { setError(e.message || String(e)); setLoading(false); }
+            }
         })();
         return () => { cancelled = true; };
     }, [fileUrl]);
+
+    // Render the tree using direct DOM manipulation (like original)
+    useEffect(() => {
+        if (!contentsRef.current || !rootRef.current || loading || error) return;
+
+        allToggleButtonsRef.current = [];
+
+        function renderInspectNode(nodeData: InspectNode, filterLower: string, path = '', alreadyMatched = false, depth = 0): HTMLElement | null {
+            if (nodeData.type !== 'object') return null;
+
+            const container = node('div', { class: 'tree-children' });
+
+            for (const child of nodeData.children) {
+                const key = child.key;
+                const valNode = child.value;
+                const keyMatch = key.toLowerCase().includes(filterLower);
+                const valText = valNode.type === 'object' ? '' : formatValue(valNode);
+                const valMatch = valText.toLowerCase().includes(filterLower);
+                const indent = `${depth * 1.2}em`;
+                const fullPath = path ? `${path}.${key}` : key;
+
+                if (valNode.type === 'object') {
+                    const subtree = renderInspectNode(valNode, filterLower, fullPath, keyMatch || alreadyMatched, depth + 1);
+                    if (subtree) {
+                        const toggle = node('span', { class: 'tree-expander', style: { cursor: 'pointer' } }, '[-]');
+                        const header = node('div',
+                            { class: 'tree-node', style: { marginLeft: indent }, 'data-path': fullPath },
+                            toggle,
+                            node('span', { class: 'tree-key' }, highlightMatch(key, filterLower))
+                        );
+
+                        let expanded = true;
+
+                        // Store toggle control object
+                        const toggleControl = {
+                            toggle,
+                            subtree: subtree as HTMLElement,
+                            setExpanded: (val: boolean) => {
+                                expanded = val;
+                                toggle.textContent = expanded ? '[-]' : '[+]';
+                                (subtree as HTMLElement).style.display = expanded ? '' : 'none';
+                            }
+                        };
+
+                        allToggleButtonsRef.current.push(toggleControl as any);
+
+                        toggle.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent click from bubbling to parent tree-node
+                            expanded = !expanded;
+                            toggle.textContent = expanded ? '[-]' : '[+]';
+                            (subtree as HTMLElement).style.display = expanded ? '' : 'none';
+
+                            // Also select this row when toggling
+                            if (contentsRef.current) {
+                                if (selectedPathRef.current) {
+                                    const prevSelected = contentsRef.current.querySelector(`.tree-node[data-path="${CSS.escape(selectedPathRef.current)}"]`);
+                                    if (prevSelected) {
+                                        prevSelected.classList.remove('selected');
+                                    }
+                                }
+                                selectedPathRef.current = fullPath;
+                                header.classList.add('selected');
+                            }
+                        });
+
+                        container.append(header, subtree);
+                    }
+                } else if (!filterLower || keyMatch || valMatch || alreadyMatched) {
+                    container.append(
+                        node('div',
+                            { class: 'tree-node', style: { marginLeft: indent }, 'data-path': fullPath },
+                            node('span', { class: 'tree-key' }, highlightMatch(`${key}: `, filterLower)),
+                            node('span', {}, highlightMatch(valText, filterLower))
+                        )
+                    );
+                }
+            }
+
+            return container.children.length > 0 ? container : null;
+        }
+
+        function updateFilteredTree() {
+            if (!contentsRef.current || !rootRef.current) return;
+            const f = filter.trim().toLowerCase();
+            const filtered = renderInspectNode(rootRef.current, f);
+            contentsRef.current.replaceChildren(filtered || node('div', {}, 'No matches'));
+
+            // Restore selection
+            if (selectedPathRef.current) {
+                const anchor = contentsRef.current.querySelector(`.tree-node[data-path="${CSS.escape(selectedPathRef.current)}"]`);
+                if (anchor) {
+                    anchor.classList.add('selected');
+                    requestAnimationFrame(() => {
+                        if (anchor) {
+                            (anchor as HTMLElement).scrollIntoView({ block: 'center' });
+                        }
+                    });
+                }
+            }
+        }
+
+        updateFilteredTree();
+    }, [loading, error, filter]);
+
+    // Handle tree node clicks for selection
+    useEffect(() => {
+        if (!contentsRef.current) return;
+
+        const handleClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const n = target.closest('.tree-node');
+            if (n) {
+                const path = n.getAttribute('data-path');
+                if (path && contentsRef.current) {
+                    if (selectedPathRef.current) {
+                        const prevSelected = contentsRef.current.querySelector(`.tree-node[data-path="${CSS.escape(selectedPathRef.current)}"]`);
+                        if (prevSelected) {
+                            prevSelected.classList.remove('selected');
+                        }
+                    }
+                    selectedPathRef.current = path;
+                    n.classList.add('selected');
+                    // Removed: window.location.hash = encodeURIComponent(path);
+                }
+            }
+        };
+
+        contentsRef.current.addEventListener('click', handleClick);
+        return () => {
+            contentsRef.current?.removeEventListener('click', handleClick);
+        };
+    }, [loading, error]);
 
     // Keyboard shortcuts: Ctrl/Cmd+F focus filter, Esc clears / blurs / closes
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             const isMac = navigator.platform.toUpperCase().includes('MAC');
             const isFind = (e.key === 'f' || e.key === 'F') && ((isMac && e.metaKey) || (!isMac && e.ctrlKey));
-            if (isFind) { e.preventDefault(); filterInputRef.current?.focus(); filterInputRef.current?.select(); return; }
+            if (isFind) {
+                e.preventDefault();
+                filterInputRef.current?.focus();
+                filterInputRef.current?.select();
+                return;
+            }
             if (e.key === 'Escape') {
                 if (filter) { setFilter(''); return; }
-                if (document.activeElement === filterInputRef.current) { (document.activeElement as HTMLElement).blur(); return; }
+                if (document.activeElement === filterInputRef.current) {
+                    (document.activeElement as HTMLElement).blur();
+                    return;
+                }
                 onClose();
             }
         };
@@ -141,86 +310,13 @@ export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose
         return () => document.removeEventListener('keydown', handler);
     }, [filter, onClose]);
 
-    const toggleExpand = useCallback((path: string) => {
-        setExpanded(prev => ({ ...prev, [path]: !prev[path] }));
-    }, []);
-
-    const handleSelect = useCallback((path: string) => {
-        setSelectedPath(path);
-        window.location.hash = encodeURIComponent(path);
-        // Scroll into view next frame
-        requestAnimationFrame(() => {
-            const el = scrollRef.current?.querySelector(`[data-path="${CSS.escape(path)}"]`);
-            if (el) (el as HTMLElement).scrollIntoView({ block: 'center' });
+    const handleToggleAll = () => {
+        const newState = !allExpanded;
+        setAllExpanded(newState);
+        allToggleButtonsRef.current.forEach((toggleControl: any) => {
+            toggleControl.setExpanded(newState);
         });
-    }, []);
-
-    // Build filtered tree (approach similar to original renderInspectNode recursion)
-    const treeContent = useMemo(() => {
-        if (!root) return null;
-        const lowerFilter = filter.trim().toLowerCase();
-
-        const highlight = (text: string) => {
-            if (!lowerFilter) return <>{text}</>;
-            const idx = text.toLowerCase().indexOf(lowerFilter);
-            if (idx === -1) return <>{text}</>;
-            return <span>{text.slice(0, idx)}<span className="highlight">{text.slice(idx, idx + lowerFilter.length)}</span>{text.slice(idx + lowerFilter.length)}</span>;
-        };
-        const rows: React.ReactNode[] = [];
-
-        function visit(node: InspectNode, path: string, depth: number, ancestorMatched: boolean) {
-            if (node.type !== 'object') return;
-            for (const child of node.children) {
-                const key = child.key; const val = child.value; const keyMatch = lowerFilter ? key.toLowerCase().includes(lowerFilter) : false;
-                const valText = val.type === 'object' ? '' : (val.type === 'unevaluated' ? '⏳' : val.type === 'error' ? `❌ ${val.value}` : String((val as any).value ?? ''));
-                const valMatch = lowerFilter ? valText.toLowerCase().includes(lowerFilter) : false;
-                const fullPath = path ? `${path}.${key}` : key;
-                const matched = ancestorMatched || keyMatch || valMatch || !lowerFilter;
-                const indentStyle = { marginLeft: `${depth * 1.2}em` };
-
-                if (val.type === 'object') {
-                    // Recurse to see if any descendants match when filter active
-                    // const beforeLength = rows.length; // unused
-                    const isExpanded = expanded[fullPath] ?? true;
-                    // const prevRows = rows; // capture (unused in React port)
-                    // We'll temporarily push into childRows via local visit function copy
-                    // (Removed unused helper visitChildren - simplified below)
-                    // Actually render this parent if it or descendants match
-                    // const descendantMatches: React.ReactNode[] = []; // unused
-                    // Quick descendant presence check (simpler: always render parent if filter empty or matched)
-                    if (!lowerFilter || matched) {
-                        rows.push(
-                            <div key={fullPath} className={`tree-node${selectedPath === fullPath ? ' selected' : ''}`} data-path={fullPath} style={indentStyle}>
-                                <span className="tree-expander" onClick={() => toggleExpand(fullPath)} style={{ cursor: 'pointer' }}>{isExpanded ? '[-]' : '[+]'}</span>
-                                <span className="tree-key" onClick={() => handleSelect(fullPath)}>{highlight(key)}</span>
-                            </div>
-                        );
-                        if (isExpanded) visit(child.value, fullPath, depth + 1, matched);
-                    } else {
-                        // For filtered mode, include only if descendants produce rows
-                        // Filtered parent pruning path omitted in React port (fallback: rely on matched flag)
-                        // Not implementing complex diff due to complexity/time; keep baseline: if parent matched already handled.
-                        // Fallback: if key or val matched but root unmatched still handled above.
-                    }
-                } else if (!lowerFilter || keyMatch || valMatch || ancestorMatched) {
-                    rows.push(
-                        <div key={fullPath} className={`tree-node${selectedPath === fullPath ? ' selected' : ''}`} data-path={fullPath} style={indentStyle} onClick={() => handleSelect(fullPath)}>
-                            <span className="tree-key">{highlight(`${key}: `)}</span>
-                            <span>{highlight(valText)}</span>
-                        </div>
-                    );
-                }
-            }
-        }
-
-        visit(root, '', 0, false);
-        if (rows.length === 0) return <div style={{ padding: '8px' }}>No matches</div>;
-        return rows;
-    }, [root, filter, expanded, selectedPath, toggleExpand, handleSelect]);
-
-    const fileName = useMemo(() => {
-        try { const u = new URL(fileUrl); return u.pathname.split('/').filter(Boolean).slice(-1)[0] || fileUrl; } catch { return fileUrl; }
-    }, [fileUrl]);
+    };
 
     return (
         <div
@@ -232,36 +328,47 @@ export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose
           .inspect-filter-bar { position: sticky; top: 0; left:0; right:0; background: white; display:flex; align-items:center; justify-content: space-between; padding:8px 16px; border-bottom:1px solid #ccc; z-index:10; box-sizing:border-box; }
           .inspect-test-name { font-weight:bold; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50%; }
           .inspect-search-wrapper { position:relative; display:inline-block; }
+          .inspect-search-controls { display:flex; align-items:center; gap:8px; }
+          .inspect-toggle-all { background:white; border:1px solid #ccc; border-radius:4px; padding:6px 10px; font-family:monospace; font-size:14px; cursor:pointer; white-space:nowrap; }
+          .inspect-toggle-all:hover { background:#f5f5f5; }
           .inspect-search-input { font-size:14px; padding:6px 28px 6px 10px; border:1px solid #ccc; border-radius:4px; font-family:monospace; min-width:200px; }
           .inspect-clear { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:16px; color:#888; cursor:pointer; padding:0; line-height:1; }
           .inspect-clear:hover { color:#000; }
-          .tree-node { position:relative; padding-left:2em; line-height:1.5; cursor:pointer; }
-          .tree-expander { position:absolute; left:0; top:0; width:2em; }
+          .tree-node { position:relative; padding-left:2em; line-height:1.5; }
+          .tree-expander { position:absolute; left:0; top:0; width:2em; cursor:pointer; }
           .tree-key { font-weight:bold; }
           .highlight { background: yellow; color: black; }
-          .tree-node.selected { background:#fffaaf; }
-          .inspect-scroll { overflow:auto; padding:8px 16px 16px; flex:1; }
+          .tree-node.selected { background:#fffaaf; outline:none; }
+          .inspect-scroll { overflow:auto; padding:8px 16px 16px; flex:1; border-radius: 0 0 6px 6px; }
           .inspect-close-btn { position:absolute; top:4px; right:8px; background:none; border:none; font-size:20px; cursor:pointer; color:#444; }
           .inspect-close-btn:hover { color:#000; }
         `}</style>
                 <button className="inspect-close-btn" onClick={onClose} aria-label="Close Inspect">×</button>
                 <div className="inspect-filter-bar">
                     <div className="inspect-test-name" title={fileName}>{fileName}</div>
-                    <div className="inspect-search-wrapper">
-                        <input
-                            ref={filterInputRef}
-                            className="inspect-search-input"
-                            placeholder="Filter logs…"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                        />
-                        {filter && <button className="inspect-clear" title="Clear filter" onClick={() => setFilter('')}>×</button>}
+                    <div className="inspect-search-controls">
+                        <button
+                            className="inspect-toggle-all"
+                            onClick={handleToggleAll}
+                            title={allExpanded ? "Collapse all" : "Expand all"}
+                        >
+                            {allExpanded ? '><' : '<>'}
+                        </button>
+                        <div className="inspect-search-wrapper">
+                            <input
+                                ref={filterInputRef}
+                                className="inspect-search-input"
+                                placeholder="Filter logs…"
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                            />
+                            {filter && <button className="inspect-clear" title="Clear filter" onClick={() => setFilter('')}>×</button>}
+                        </div>
                     </div>
                 </div>
-                <div className="inspect-scroll" ref={scrollRef}>
+                <div className="inspect-scroll" ref={contentsRef}>
                     {loading && <div style={{ padding: '12px' }}>Loading…</div>}
                     {error && !loading && <div style={{ padding: '12px', color: 'red' }}>Error: {error}</div>}
-                    {!loading && !error && treeContent}
                 </div>
             </div>
         </div>

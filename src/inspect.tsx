@@ -354,15 +354,36 @@ export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose
                         >
                             {allExpanded ? '><' : '<>'}
                         </button>
-                        <div className="inspect-search-wrapper">
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
                             <input
                                 ref={filterInputRef}
-                                className="inspect-search-input"
-                                placeholder="Filter logs…"
                                 value={filter}
                                 onChange={(e) => setFilter(e.target.value)}
+                                placeholder="Filter ..."
+                                className="common-search-input"
+                                style={{ paddingRight: '28px' }}
                             />
-                            {filter && <button className="inspect-clear" title="Clear filter" onClick={() => setFilter('')}>×</button>}
+                            {filter && (
+                                <button
+                                    onClick={() => setFilter('')}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '6px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        fontSize: '16px',
+                                        color: '#888',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        lineHeight: 1
+                                    }}
+                                    title="Clear filter"
+                                >
+                                    ×
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

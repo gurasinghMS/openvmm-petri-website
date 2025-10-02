@@ -13,13 +13,22 @@ import './styles/common.css';
 import { fetchRunData, RunData } from './fetch';
 import { Menu } from './menu.tsx';
 import { VirtualizedRunsTable } from './virtualized_table.tsx';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { SearchInput } from './search';
 
 export function Runs(): React.JSX.Element {
   const [runs, setRuns] = useState<RunData[]>([]);
   const [branchFilter, setBranchFilter] = useState<string>('all');
-  const [internalFilter, setInternalFilter] = useState<string>('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Read search filter from URL params
+  const getSearchFilter = (): string => {
+    const params = new URLSearchParams(location.search);
+    return params.get('search') ?? '';
+  };
+
+  const internalFilter = getSearchFilter();
 
   // Query client should allow us to cache and reuse the data.
   const queryClient = useQueryClient();
@@ -75,8 +84,6 @@ export function Runs(): React.JSX.Element {
         <RunsHeader
           branchFilter={branchFilter}
           setBranchFilter={setBranchFilter}
-          globalFilter={internalFilter}
-          setGlobalFilter={setInternalFilter}
           resultCount={filteredRuns.length}
         />
       </div>
@@ -257,16 +264,12 @@ const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[
 interface RunsHeaderProps {
   branchFilter: string;
   setBranchFilter: (branch: string) => void;
-  globalFilter: string;
-  setGlobalFilter: (filter: string) => void;
   resultCount: number;
 }
 
 export function RunsHeader({
   branchFilter,
   setBranchFilter,
-  globalFilter,
-  setGlobalFilter,
   resultCount,
 }: RunsHeaderProps): React.JSX.Element {
   return (
@@ -294,12 +297,7 @@ export function RunsHeader({
         </div>
       </div>
       <div className="runs-header-right-section">
-        <input
-          value={globalFilter ?? ''}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Search ..."
-          className="common-search-input"
-        />
+        <SearchInput />
         <span className="results-count">
           {resultCount} runs
         </span>

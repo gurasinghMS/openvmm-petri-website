@@ -52,5 +52,5 @@ function RunDetailsRouteWrapper() {
   if (!runId) {
     return <div style={{ padding: '1rem' }}>Run ID is missing.</div>;
   }
-  return <RunDetailsView runId={runId} searchFilter="" />;
+  return <RunDetailsView runId={runId} />;
 }

@@ -10,29 +10,26 @@ import {
 import { RunDetails, TestResult } from './fetch';
 import { Menu } from './menu';
 import { VirtualizedTable } from './virtualized_table';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import './styles/common.css';
 import './styles/runs.css';
 import './styles/run_details.css'
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchRunDetails } from './fetch';
+import { SearchInput } from './search';
 
 interface RunDetailsProps {
   runId: string;
-  searchFilter: string; // initial or controlled filter value
-  setSearchFilter?: (val: string) => void; // optional external setter
   onTestLogClick?: (testName: string, jobName: string) => void;
 }
 
 interface RunDetailsHeaderProps {
-  filter: string;
-  setFilter: (val: string) => void;
   resultCount: number;
   totalCount: number;
   runId: string;
 }
 
-function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }: RunDetailsHeaderProps): React.JSX.Element {
+function RunDetailsHeader({ resultCount, totalCount, runId }: RunDetailsHeaderProps): React.JSX.Element {
   return (
     <>
       <div className="runs-header-left-section">
@@ -46,12 +43,7 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
         </div>
       </div>
       <div className="runs-header-right-section">
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search tests..."
-          className="common-search-input"
-        />
+        <SearchInput />
         <span className="results-count" title={`${resultCount} of ${totalCount} tests visible`}>
           {resultCount} tests
         </span>
@@ -60,20 +52,23 @@ function RunDetailsHeader({ filter, setFilter, resultCount, totalCount, runId }:
   );
 }
 
-export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLogClick }: RunDetailsProps): React.JSX.Element {
+export function RunDetailsView({ runId, onTestLogClick }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null);
   // (Spinner removed) Loading state previously unused; can be reintroduced if UI needs it later.
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'status', desc: false } // Sort by status ascending, failed tests first
   ]);
-  // Local filter state (falls back to external setter if provided)
-  const [internalFilter, setInternalFilter] = useState<string>(searchFilter || '');
 
-  useEffect(() => {
-    // sync if parent changes
-    setInternalFilter(searchFilter || '');
-  }, [searchFilter]);
+  const location = useLocation();
+
+  // Read search filter from URL params
+  const getSearchFilter = (): string => {
+    const params = new URLSearchParams(location.search);
+    return params.get('search') ?? '';
+  };
+
+  const internalFilter = getSearchFilter();
 
   const queryClient = useQueryClient();
 
@@ -204,11 +199,6 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
     <div className="common-page-display">
       <div className="common-page-header">
         <RunDetailsHeader
-          filter={internalFilter}
-          setFilter={(val) => {
-            setInternalFilter(val);
-            setSearchFilter?.(val);
-          }}
           resultCount={filteredTests.length}
           totalCount={totalTests}
           runId={runId}
@@ -220,11 +210,6 @@ export function RunDetailsView({ runId, searchFilter, setSearchFilter, onTestLog
         estimatedRowHeight={44}
         getRowClassName={(row) => row.original.status === 'failed' ? 'failed-row' : 'passed-row'}
       />
-      {filteredTests.length === 0 && totalTests > 0 && (
-        <div className="no-results" style={{ padding: '1rem' }}>
-          No tests match your search criteria.
-        </div>
-      )}
     </div>
   );
 }

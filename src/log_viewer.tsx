@@ -14,21 +14,20 @@ import {
     SortingState,
 } from '@tanstack/react-table';
 import './styles/common.css';
+import { SearchInput } from './search';
 
 interface InspectViewerHeaderProps {
     runId: string;
     architecture: string;
     testNameRemainder: string; // portion after architecture
     fullTestName: string; // architecture + '/' + remainder
-    searchFilter: string;
-    setSearchFilter: (filter: string) => void;
-    onClearFilter: () => void;
+    searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 // Display entry shape sourced from fetchProcessedPetriLog
 interface LogEntry extends ProcessedLogEntry { }
 
-function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchFilter, setSearchFilter, onClearFilter }: InspectViewerHeaderProps): React.JSX.Element {
+function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName, searchInputRef }: InspectViewerHeaderProps): React.JSX.Element {
     const encodedArchitecture = encodeURIComponent(architecture);
     const encodedRemainder = encodeURIComponent(testNameRemainder);
 
@@ -97,42 +96,24 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
                     </h3>
                 </div>
             </div>
-            <div className="runs-header-right-section" style={{ position: 'relative', display: 'inline-block' }}>
-                <input
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder="Filter Logs ..."
-                    className="common-search-input"
-                    style={{ paddingRight: '28px' }}
-                />
-                {searchFilter && (
-                    <button
-                        onClick={onClearFilter}
-                        style={{
-                            position: 'absolute',
-                            right: '6px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '16px',
-                            color: '#888',
-                            cursor: 'pointer',
-                            padding: 0,
-                            lineHeight: 1
-                        }}
-                        title="Clear filter"
-                    >
-                        ×
-                    </button>
-                )}
+            <div className="runs-header-right-section">
+                <SearchInput inputRef={searchInputRef} />
             </div>
         </>
     );
 }
 
 export function LogViewer(): React.JSX.Element {
-    const [searchFilter, setSearchFilter] = useState<string>('');
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    // Read search filter from URL params
+    const getSearchFilter = (): string => {
+        const params = new URLSearchParams(location.search);
+        return params.get('search') ?? '';
+    };
+
+    const searchFilter = getSearchFilter();
     const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -149,8 +130,6 @@ export function LogViewer(): React.JSX.Element {
     const initializedFromUrlRef = useRef<boolean>(false);
 
     const { runId, architecture: archParam, testName: encodedTestName } = useParams();
-    const location = useLocation();
-    const navigate = useNavigate();
     // Build full test name depending on whether new (architecture + remainder) or legacy route
     let fullTestName: string;
     let architecture: string;
@@ -340,7 +319,10 @@ export function LogViewer(): React.JSX.Element {
                 if (modalContent) {
                     setModalContent(null);
                 } else if (searchFilter) {
-                    setSearchFilter('');
+                    // Clear search filter by updating URL
+                    const params = new URLSearchParams(location.search);
+                    params.set('search', '');
+                    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
                 } else if (document.activeElement === searchInputRef.current) {
                     searchInputRef.current?.blur();
                 }
@@ -448,11 +430,6 @@ export function LogViewer(): React.JSX.Element {
         navigate(`${location.pathname}?${params.toString()}`, { replace: true });
     };
 
-    const handleClearFilter = () => {
-        setSearchFilter('');
-        searchInputRef.current?.focus();
-    };
-
     // Capture the initial ?log param once per runId/testName change
     useEffect(() => {
         initializedFromUrlRef.current = false;
@@ -536,9 +513,7 @@ export function LogViewer(): React.JSX.Element {
                     architecture={architecture}
                     testNameRemainder={testNameRemainder}
                     fullTestName={fullTestName}
-                    searchFilter={searchFilter}
-                    setSearchFilter={setSearchFilter}
-                    onClearFilter={handleClearFilter}
+                    searchInputRef={searchInputRef}
                 />
             </div>
 

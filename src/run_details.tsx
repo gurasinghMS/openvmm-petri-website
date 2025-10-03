@@ -1,14 +1,14 @@
 import './styles/common.css';
 import React, { useState, useEffect, useMemo } from 'react';
 import { SortingState } from '@tanstack/react-table';
-import { RunDetailsData, TestResult } from './fetch';
+import { RunDetailsData, TestResult } from './data_defs';
 import { Menu } from './menu';
 import { VirtualizedTable } from './virtualized_table';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchRunDetails } from './fetch';
 import { SearchInput } from './search';
-import { createColumns } from './table_defs/run_details';
+import { createColumns, defaultSorting } from './table_defs/run_details';
 
 interface RunDetailsProps {
   runId: string;
@@ -17,9 +17,7 @@ interface RunDetailsProps {
 export function RunDetails({ runId }: RunDetailsProps): React.JSX.Element {
   const [runDetails, setRunDetails] = useState<RunDetailsData | null>(null);
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'status', desc: false } // Sort by status ascending, failed tests first
-  ]);
+  const [sorting, setSorting] = useState<SortingState>(defaultSorting);
 
   const queryClient = useQueryClient();
   useEffect(() => {

@@ -1,8 +1,9 @@
 import './styles/common.css';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SortingState } from '@tanstack/react-table';
-import { useQueryClient } from '@tanstack/react-query';
-import { fetchRunData, RunData } from './fetch';
+import { useQuery } from '@tanstack/react-query';
+import { RunData } from './data_defs';
+import { fetchRunData } from './fetch';
 import { Menu } from './menu.tsx';
 import { VirtualizedTable } from './virtualized_table.tsx';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,20 +11,17 @@ import { SearchInput } from './search';
 import { createColumns, defaultSorting } from './table_defs/runs';
 
 export function Runs(): React.JSX.Element {
-  const [runs, setRuns] = useState<RunData[]>([]);
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [searchFilter, setSearchFilter] = useState<string>('');
 
   // Fetch the relevant data
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    queryClient.fetchQuery({
-      queryKey: ['runs'],
-      queryFn: () => fetchRunData(queryClient),
-      staleTime: 3 * 60 * 1000, // runs list can revalidate every 3 minutes
-      gcTime: 5 * 60 * 1000,
-    }).then(setRuns);
-  }, [queryClient]);
+  const { data: runs = [] } = useQuery({
+    queryKey: ['runs'],
+    queryFn: (context) => fetchRunData(context.client),
+    staleTime: 2 * 60 * 1000, // refetch every 2 minutes
+    gcTime: Infinity, // never garbage collect
+    refetchInterval: 2 * 60 * 1000, // automatically refetch every 2 minutes
+  });
 
   // Get the table definition (columns and default sorting)
   const navigate = useNavigate();

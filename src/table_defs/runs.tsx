@@ -1,5 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { RunData } from '../fetch';
+import { RunData } from '../data_defs';
 import '../styles/runs.css';
 
 export const defaultSorting = [

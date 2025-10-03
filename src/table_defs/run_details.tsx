@@ -1,7 +1,11 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { TestResult } from '../fetch';
+import { TestResult } from '../data_defs';
 import '../styles/run_details.css';
+
+export const defaultSorting = [
+    { id: 'status', desc: false } // Sort by status ascending, failed tests first
+];
 
 // Define columns for the test results table
 export const createColumns = (runId: string): ColumnDef<TestResult>[] => [

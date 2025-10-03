@@ -1,47 +1,73 @@
-// Data types for representing run data
-export interface RunData {
-  name: string;
-  creationTime: Date;
-  lastModified: Date;
-  etag: string;
-  contentLength: number;
-  metadata: RunMetadata;
-}
-
-export interface RunMetadata {
-  petriFailed: number;
-  petriPassed: number;
-  ghBranch: string;
-  ghPr?: string;
-  prTitle?: string;
-}
-
-export interface TestResult {
-  name: string;
-  status: 'passed' | 'failed' | 'unknown';
-  path: string;
-  duration?: number;
-}
-
-export interface RunDetailsData {
-  runNumber: string;
-  tests: TestResult[];
-}
-
-export interface ParsedRunResult {
-  serviceEndpoint: string;
-  containerName: string;
-  prefix: string;
-  runs: RunData[];
-}
-
-// ============================================
-// PR Title Fetching & Caching Helpers
-// ============================================
-
 import { QueryClient } from '@tanstack/react-query';
+import type { RunData, RunMetadata, TestResult, RunDetailsData, ParsedRunResult } from './data_defs';
 
-const PR_TITLE_CACHE_MS = 15 * 60 * 1000; // 15 minutes
+/**
+ * Start background data prefetching and refetching for the runs list.
+ * This ensures the homepage loads instantly and data stays fresh.
+ */
+export function startDataPrefetching(queryClient: QueryClient): void {
+  // Initial prefetch for instant first load
+  void queryClient.prefetchQuery({
+    queryKey: ['runs'],
+    queryFn: () => fetchRunData(queryClient),
+    staleTime: 3 * 60 * 1000,
+    gcTime: Infinity,
+  });
+
+  // Background refetch every 2 minutes to keep data fresh
+  setInterval(() => {
+    void queryClient.refetchQueries({
+      queryKey: ['runs'],
+      type: 'all' // Keeps the runs data current no matter what!
+    });
+  }, 2 * 60 * 1000);  // Refetch every 2 min
+}
+
+// Main export function - fetches and returns parsed run data
+export async function fetchRunData(queryClient: QueryClient): Promise<RunData[]> {
+  try {
+    const url = 'https://openvmmghtestresults.blob.core.windows.net/results?restype=container&comp=list&showonly=files&include=metadata&prefix=runs/';
+    const response = await fetch(url);
+    const data = await response.text();
+
+    // Parse the data and get the runs array
+    const parsedData = parseRunData(data, queryClient);
+    const runs = parsedData.runs;
+
+    // Collect all PR numbers that need titles
+    const prNumbers = runs
+      .map(run => run.metadata.ghPr)
+      .filter((pr): pr is string => pr !== undefined);
+
+    if (prNumbers.length > 0) {
+      // Use per-PR cached queries (never stale, never garbage collected) to avoid redundant network calls.
+      const unique = Array.from(new Set(prNumbers));
+      const entries = await Promise.all(unique.map(async pr => {
+        const title = await queryClient.ensureQueryData<string | null>({
+          queryKey: ['prTitle', pr],
+          queryFn: () => fetchSinglePRTitle(pr),
+          staleTime: Infinity, // Never goes stale
+          gcTime: Infinity, // Never garbage collected
+        });
+        return [pr, title] as const;
+      }));
+      const titleMap = new Map<string, string | null>(entries);
+      runs.forEach(run => {
+        const pr = run.metadata.ghPr;
+        if (pr && titleMap.has(pr)) {
+          const t = titleMap.get(pr);
+          if (t) run.metadata.prTitle = t;
+        }
+      });
+    }
+
+    console.log('Done fetching and parsing run data');
+    return runs;
+  } catch (error) {
+    console.error('Error fetching run data:', error);
+    throw error;
+  }
+}
 
 /** Fetch a single PR title from GitHub. Returns null if unavailable or rate-limited. */
 async function fetchSinglePRTitle(prNumber: string): Promise<string | null> {
@@ -59,24 +85,8 @@ async function fetchSinglePRTitle(prNumber: string): Promise<string | null> {
   return null;
 }
 
-/**
- * Legacy bulk fetch fallback when no QueryClient is passed (kept for compatibility).
- * Not used when a QueryClient is provided.
- */
-async function fetchPRTitlesBulk(prNumbers: string[]): Promise<Map<string, string>> {
-  const prTitles = new Map<string, string>();
-  const promises = prNumbers.map(prNumber => fetchSinglePRTitle(prNumber).then(title => ({ prNumber, title })));
-  const results = await Promise.allSettled(promises);
-  results.forEach(r => {
-    if (r.status === 'fulfilled' && r.value.title) {
-      prTitles.set(r.value.prNumber, r.value.title!);
-    }
-  });
-  return prTitles;
-}
-
 // Function to parse XML run data into structured format
-function parseRunData(xmlText: string, queryClient?: QueryClient): ParsedRunResult {
+function parseRunData(xmlText: string, queryClient: QueryClient): ParsedRunResult {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -116,56 +126,8 @@ function parseRunData(xmlText: string, queryClient?: QueryClient): ParsedRunResu
     });
   }
 
-  // Opportunistic prefetch strategy (sequential):
-  // 1. Prefetch latest 5 failed runs (by creationTime desc)
-  // 2. AFTER those complete, prefetch all remaining failed runs on branch 'main'
-  // We avoid duplicate work and run this in the background so initial render isn't blocked.
-  if (queryClient) {
-    try {
-      const failed = runs.filter(r => r.metadata.petriFailed > 0);
-      failed.sort((a, b) => b.creationTime.getTime() - a.creationTime.getTime());
-      const latestFive = failed.slice(0, 5);
-      const failedMain = failed.filter(r => r.metadata.ghBranch === 'main');
-
-      const extractRunNumber = (name: string) => {
-        const runNumberFull = name.replace(/^runs\//, '');
-        return runNumberFull.split('/')[0];
-      };
-
-      void (async () => {
-        const prefetched = new Set<string>();
-        const prefetchRun = async (runNumber: string) => {
-          const key = ['runDetails', runNumber];
-          if (queryClient.getQueryData(key)) { prefetched.add(runNumber); return; }
-          try {
-            await queryClient.prefetchQuery({
-              queryKey: key,
-              queryFn: () => fetchRunDetails(runNumber, queryClient),
-              staleTime: Infinity,
-              gcTime: 15 * 60 * 1000,
-            });
-            prefetched.add(runNumber);
-          } catch (e) {
-            console.warn(`[parseRunData] Prefetch failed for run ${runNumber}`, e);
-          }
-        };
-
-        // First batch: latest 5 failed
-        const firstRunNumbers = latestFive.map(r => extractRunNumber(r.name)).filter(Boolean);
-        await Promise.allSettled(firstRunNumbers.map(rn => prefetchRun(rn)));
-
-        // Second batch: failed on main not already prefetched
-        const secondRunNumbers = failedMain
-          .map(r => extractRunNumber(r.name))
-          .filter(rn => rn && !prefetched.has(rn));
-        if (secondRunNumbers.length) {
-          await Promise.allSettled(secondRunNumbers.map(rn => prefetchRun(rn)));
-        }
-      })();
-    } catch (e) {
-      console.warn('[parseRunData] Failed to schedule runDetails prefetch', e);
-    }
-  }
+  // Trigger opportunistic prefetching in the background
+  opportunisticPrefetching(runs, queryClient);
 
   return {
     serviceEndpoint,
@@ -175,66 +137,93 @@ function parseRunData(xmlText: string, queryClient?: QueryClient): ParsedRunResu
   };
 }
 
-// Main export function - fetches and returns parsed run data
-export async function fetchRunData(queryClient?: QueryClient): Promise<RunData[]> {
+/**
+ * Opportunistic prefetch strategy:
+ * 1. First 7 failed runs (by creationTime desc)
+ * 2. Top 10 runs overall (by creationTime desc, regardless of status/branch)
+ * 3. All remaining runs where branch === 'main'
+ * We avoid duplicate work and run this in the background so initial render isn't blocked.
+ * Prefetches in batches of 5 concurrent requests to balance speed vs resource usage.
+ */
+function opportunisticPrefetching(runs: RunData[], queryClient: QueryClient): void {
   try {
-    console.log('Fetching run data from Azure Blob Storage')
-    const url = 'https://openvmmghtestresults.blob.core.windows.net/results?restype=container&comp=list&showonly=files&include=metadata&prefix=runs/';
-    const response = await fetch(url);
-    const data = await response.text();
+    // Sort all runs by creation time descending
+    const sortedRuns = [...runs].sort((a, b) => b.creationTime.getTime() - a.creationTime.getTime());
 
-    // Parse the data and get the runs array
-    const parsedData = parseRunData(data, queryClient);
-    const runs = parsedData.runs;
+    const extractRunNumber = (name: string) => {
+      const runNumberFull = name.replace(/^runs\//, '');
+      return runNumberFull.split('/')[0];
+    };
 
-    // Collect all PR numbers that need titles
-    const prNumbers = runs
-      .map(run => run.metadata.ghPr)
-      .filter((pr): pr is string => pr !== undefined);
+    void (async () => {
+      const prefetched = new Set<string>();
+      const prefetchList: string[] = [];
 
-    if (prNumbers.length > 0) {
-      if (queryClient) {
-        // Use per-PR cached queries (15 min) to avoid redundant network calls across navigations.
-        const unique = Array.from(new Set(prNumbers));
-        const entries = await Promise.all(unique.map(async pr => {
-          const title = await queryClient.ensureQueryData<string | null>({
-            queryKey: ['prTitle', pr],
-            queryFn: () => fetchSinglePRTitle(pr),
-            staleTime: PR_TITLE_CACHE_MS,
-            gcTime: PR_TITLE_CACHE_MS,
-          });
-          return [pr, title] as const;
-        }));
-        const titleMap = new Map<string, string | null>(entries);
-        runs.forEach(run => {
-          const pr = run.metadata.ghPr;
-          if (pr && titleMap.has(pr)) {
-            const t = titleMap.get(pr);
-            if (t) run.metadata.prTitle = t;
-          }
-        });
-      } else {
-        // Fallback legacy bulk fetch (no caching layer available here)
-        const prTitles = await fetchPRTitlesBulk(prNumbers);
-        runs.forEach(run => {
-          if (run.metadata.ghPr && prTitles.has(run.metadata.ghPr)) {
-            run.metadata.prTitle = prTitles.get(run.metadata.ghPr);
-          }
-        });
+      // Step 1: First 7 failed runs
+      const failedRuns = sortedRuns.filter(r => r.metadata.petriFailed > 0);
+      const first7Failed = failedRuns.slice(0, 7);
+      for (const run of first7Failed) {
+        const runNumber = extractRunNumber(run.name);
+        if (runNumber) {
+          prefetchList.push(runNumber);
+          prefetched.add(runNumber);
+        }
       }
-    }
 
-    console.log('Done fetching and parsing run data');
-    // Duplicate the runs array to simulate a large dataset
-    return runs;
-  } catch (error) {
-    console.error('Error fetching run data:', error);
-    throw error;
+      // Step 2: Top 10 runs overall (regardless of status/branch)
+      const top10 = sortedRuns.slice(0, 10);
+      for (const run of top10) {
+        const runNumber = extractRunNumber(run.name);
+        if (runNumber && !prefetched.has(runNumber)) {
+          prefetchList.push(runNumber);
+          prefetched.add(runNumber);
+        }
+      }
+
+      // Step 3: Last 7 runs on main branch
+      const mainRuns = sortedRuns.filter(r => r.metadata.ghBranch === 'main').slice(0, 7);
+      for (const run of mainRuns) {
+        const runNumber = extractRunNumber(run.name);
+        if (runNumber && !prefetched.has(runNumber)) {
+          prefetchList.push(runNumber);
+          prefetched.add(runNumber);
+        }
+      }
+
+      // Prefetch with controlled parallelism (5 concurrent requests at a time)
+      const BATCH_SIZE = 5;
+      const prefetchRun = async (runNumber: string) => {
+        const key = ['runDetails', runNumber];
+        if (queryClient.getQueryData(key)) return;
+        try {
+          await queryClient.prefetchQuery({
+            queryKey: key,
+            queryFn: () => fetchRunDetails(runNumber, queryClient),
+            staleTime: Infinity,
+            gcTime: 15 * 60 * 1000,
+          });
+        } catch (e) {
+          console.warn(`[opportunisticPrefetching] Prefetch failed for run ${runNumber}`, e);
+        }
+      };
+
+      // Process in batches to limit concurrent requests
+      for (let i = 0; i < prefetchList.length; i += BATCH_SIZE) {
+        const batch = prefetchList.slice(i, i + BATCH_SIZE);
+        await Promise.allSettled(batch.map(runNumber => prefetchRun(runNumber)));
+        console.log(`[opportunisticPrefetching] Completed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(prefetchList.length / BATCH_SIZE)} (${i + batch.length}/${prefetchList.length} runs)`);
+      }
+
+      console.log(`[opportunisticPrefetching] ✅ Completed prefetching all ${prefetchList.length} runs`);
+    })();
+  } catch (e) {
+    console.warn('[opportunisticPrefetching] Failed to schedule runDetails prefetch', e);
   }
 }
 
+
 // Function to parse detailed run data from XML
-function parseRunDetails(xmlText: string, runNumber: string, queryClient?: QueryClient): RunDetailsData {
+function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryClient): RunDetailsData {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -309,36 +298,34 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient?: Query
   tests.sort((a, b) => a.name.localeCompare(b.name));
 
   // Prefetch petri.jsonl ONLY for failed tests (background, non-blocking)
-  if (queryClient) {
-    try {
-      const prefetchPromises: Promise<unknown>[] = [];
-      for (const test of tests) {
-        if (test.status !== 'failed') continue; // only failed tests
-        const firstSlash = test.name.indexOf('/');
-        if (firstSlash === -1) continue; // malformed name
-        const architecture = test.name.slice(0, firstSlash);
-        const remainder = test.name.slice(firstSlash + 1); // may contain further slashes
-        const queryKey = ['petriLog', runNumber, architecture, remainder];
-        prefetchPromises.push(
-          queryClient.fetchQuery({
-            queryKey,
-            queryFn: () => fetchProcessedPetriLog(runNumber, architecture, remainder),
-            staleTime: 60 * 1000, // 1 min stale window for logs
-            gcTime: 5 * 60 * 1000,
-          })
-        );
-      }
-      if (prefetchPromises.length) {
-        Promise.allSettled(prefetchPromises).then(res => {
-          const failed = res.filter(r => r.status === 'rejected').length;
-          if (failed) {
-            console.warn(`[parseRunDetails] ${failed} petri.jsonl prefetches failed for run ${runNumber}`);
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('[parseRunDetails] Prefetch phase error', e);
+  try {
+    const prefetchPromises: Promise<unknown>[] = [];
+    for (const test of tests) {
+      if (test.status !== 'failed') continue; // only failed tests
+      const firstSlash = test.name.indexOf('/');
+      if (firstSlash === -1) continue; // malformed name
+      const architecture = test.name.slice(0, firstSlash);
+      const remainder = test.name.slice(firstSlash + 1); // may contain further slashes
+      const queryKey = ['petriLog', runNumber, architecture, remainder];
+      prefetchPromises.push(
+        queryClient.fetchQuery({
+          queryKey,
+          queryFn: () => fetchProcessedPetriLog(runNumber, architecture, remainder),
+          staleTime: 60 * 1000, // 1 min stale window for logs
+          gcTime: 5 * 60 * 1000,
+        })
+      );
     }
+    if (prefetchPromises.length) {
+      Promise.allSettled(prefetchPromises).then(res => {
+        const failed = res.filter(r => r.status === 'rejected').length;
+        if (failed) {
+          console.warn(`[parseRunDetails] ${failed} petri.jsonl prefetches failed for run ${runNumber}`);
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('[parseRunDetails] Prefetch phase error', e);
   }
 
   return {
@@ -361,7 +348,7 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient?: Query
  * For petri.jsonl we retain the entry for 1 hour (stale + GC) so subsequent
  * navigation to an individual test log can hydrate instantly without a network roundtrip.
  */
-export async function fetchRunDetails(runNumber: string, queryClient?: QueryClient): Promise<RunDetailsData> {
+export async function fetchRunDetails(runNumber: string, queryClient: QueryClient): Promise<RunDetailsData> {
   try {
     console.log(`Fetching detailed test data for run ${runNumber}...`);
 

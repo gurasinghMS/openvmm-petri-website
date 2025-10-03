@@ -22,7 +22,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                             e.preventDefault();
                             onRunClick(runId);
                         }}
-                        className="run-name-link"
+                        className="common-table-link"
                     >
                         {runId}
                     </a>
@@ -123,14 +123,8 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                             href={`https://github.com/microsoft/openvmm/pull/${pr}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="pr-combined-link"
+                            className="pr-link"
                             title={prTitle ? `#${pr} ${prTitle}` : `PR #${pr}`}
-                            style={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                lineHeight: '1.25rem',
-                            }}
                         >
                             {fullText}
                         </a>
@@ -160,7 +154,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                         href={`https://github.com/microsoft/openvmm/actions/runs/${runId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="run-name-link"
+                        className="common-table-link"
                     >
                         {runId}
                     </a>

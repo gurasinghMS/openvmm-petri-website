@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { RunData, RunMetadata, TestResult, RunDetailsData, ParsedRunResult } from './data_defs';
+import type { RunData, RunMetadata, TestResult, RunDetailsData } from './data_defs';
 
 /**
  * Start background data prefetching and refetching for the runs list.
@@ -10,8 +10,8 @@ export function startDataPrefetching(queryClient: QueryClient): void {
   void queryClient.prefetchQuery({
     queryKey: ['runs'],
     queryFn: () => fetchRunData(queryClient),
-    staleTime: 3 * 60 * 1000,
-    gcTime: Infinity,
+    staleTime: 3 * 60 * 1000, // 3 min stale window
+    gcTime: Infinity,  // never garbage collect. Runs data always stays in memory
   });
 
   // Background refetch every 2 minutes to keep data fresh
@@ -31,8 +31,7 @@ export async function fetchRunData(queryClient: QueryClient): Promise<RunData[]>
     const data = await response.text();
 
     // Parse the data and get the runs array
-    const parsedData = parseRunData(data, queryClient);
-    const runs = parsedData.runs;
+    const runs = parseRunData(data, queryClient);
 
     // Collect all PR numbers that need titles
     const prNumbers = runs
@@ -40,7 +39,11 @@ export async function fetchRunData(queryClient: QueryClient): Promise<RunData[]>
       .filter((pr): pr is string => pr !== undefined);
 
     if (prNumbers.length > 0) {
-      // Use per-PR cached queries (never stale, never garbage collected) to avoid redundant network calls.
+      // Use per-PR cached queries (never stale, never garbage collected) to
+      // avoid redundant network calls.
+      // NOTE: PR titles will not be updated even if they are updated in the
+      // back end. This saves us from hitting GitHub's rate limits. Could be
+      // rethought to pull stuff after 15min.
       const unique = Array.from(new Set(prNumbers));
       const entries = await Promise.all(unique.map(async pr => {
         const title = await queryClient.ensureQueryData<string | null>({
@@ -61,7 +64,6 @@ export async function fetchRunData(queryClient: QueryClient): Promise<RunData[]>
       });
     }
 
-    console.log('Done fetching and parsing run data');
     return runs;
   } catch (error) {
     console.error('Error fetching run data:', error);
@@ -86,15 +88,9 @@ async function fetchSinglePRTitle(prNumber: string): Promise<string | null> {
 }
 
 // Function to parse XML run data into structured format
-function parseRunData(xmlText: string, queryClient: QueryClient): ParsedRunResult {
+function parseRunData(xmlText: string, queryClient: QueryClient): RunData[] {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-  // Get root element attributes
-  const enumerationResults = xmlDoc.getElementsByTagName("EnumerationResults")[0];
-  const serviceEndpoint = enumerationResults.getAttribute("ServiceEndpoint") || "";
-  const containerName = enumerationResults.getAttribute("ContainerName") || "";
-  const prefix = xmlDoc.getElementsByTagName("Prefix")[0]?.textContent || "";
 
   // Parse each blob
   const blobs = xmlDoc.getElementsByTagName("Blob");
@@ -126,15 +122,9 @@ function parseRunData(xmlText: string, queryClient: QueryClient): ParsedRunResul
     });
   }
 
-  // Trigger opportunistic prefetching in the background
+  // Trigger background data prefetching of runDetails
   opportunisticPrefetching(runs, queryClient);
-
-  return {
-    serviceEndpoint,
-    containerName,
-    prefix,
-    runs,
-  };
+  return runs;
 }
 
 /**
@@ -211,10 +201,7 @@ function opportunisticPrefetching(runs: RunData[], queryClient: QueryClient): vo
       for (let i = 0; i < prefetchList.length; i += BATCH_SIZE) {
         const batch = prefetchList.slice(i, i + BATCH_SIZE);
         await Promise.allSettled(batch.map(runNumber => prefetchRun(runNumber)));
-        console.log(`[opportunisticPrefetching] Completed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(prefetchList.length / BATCH_SIZE)} (${i + batch.length}/${prefetchList.length} runs)`);
       }
-
-      console.log(`[opportunisticPrefetching] ✅ Completed prefetching all ${prefetchList.length} runs`);
     })();
   } catch (e) {
     console.warn('[opportunisticPrefetching] Failed to schedule runDetails prefetch', e);
@@ -312,7 +299,7 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryC
           queryKey,
           queryFn: () => fetchProcessedPetriLog(runNumber, architecture, remainder),
           staleTime: 60 * 1000, // 1 min stale window for logs
-          gcTime: 5 * 60 * 1000,
+          gcTime: 60 * 1000,
         })
       );
     }
@@ -334,24 +321,13 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryC
   };
 }
 
-// Function to fetch detailed test results for a specific run
-// (Removed) PETRI_FILE_CACHE_MS constant no longer used after refactor; reintroduce if raw petri file caching reinstated.
-
 /**
  * Fetch detailed run information (listing of test result folders) for a run number.
  * When a QueryClient is supplied we proactively prefetch & cache the content of
  * any petri.jsonl (and petri.passed) files discovered during the blob listing.
- *
- * Query keys:
- *   [<blobPath>]  -> raw text content of that blob (petri.jsonl or petri.passed)
- *
- * For petri.jsonl we retain the entry for 1 hour (stale + GC) so subsequent
- * navigation to an individual test log can hydrate instantly without a network roundtrip.
  */
 export async function fetchRunDetails(runNumber: string, queryClient: QueryClient): Promise<RunDetailsData> {
   try {
-    console.log(`Fetching detailed test data for run ${runNumber}...`);
-
     let allTests: TestResult[] = [];
     let continuationToken: string | null = null;
 
@@ -364,7 +340,6 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
       }
 
       const response = await fetch(url);
-
       if (!response.ok) {
         throw new Error(`Failed to fetch run details: ${response.status} ${response.statusText}`);
       }
@@ -377,22 +352,11 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
 
       // Check for NextMarker to see if there are more pages
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(data, "text/xml");
-      const nextMarkerElement = xmlDoc.getElementsByTagName("NextMarker")[0];
-      continuationToken = nextMarkerElement?.textContent || null;
-
-      console.log(`Found ${pageResults.tests.length} tests on this page. Total so far: ${allTests.length}`);
-      if (continuationToken) {
-        console.log(`More results available, will fetch next page...`);
-      }
-
+      continuationToken = parser.parseFromString(data, "text/xml").getElementsByTagName("NextMarker")[0]?.textContent || null;
     } while (continuationToken);
 
     // Sort all tests by name
     allTests.sort((a, b) => a.name.localeCompare(b.name));
-
-    console.log(`✅ Completed fetching all test data for run ${runNumber}. Total tests: ${allTests.length}`);
-
     return {
       runNumber,
       tests: allTests
@@ -402,10 +366,6 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
     throw error;
   }
 }
-
-// ============================================
-// Petri log fetch helper (for LogViewer)
-// ============================================
 
 /**
  * Fetch the raw petri.jsonl log content for a given run / architecture / test path.

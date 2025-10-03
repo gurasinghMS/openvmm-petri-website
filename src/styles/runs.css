@@ -3,21 +3,6 @@
     background-color: rgba(25, 118, 210, 0.04);
 }
 
-.run-name-link {
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-weight: 600;
-    color: #1976d2;
-    text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.run-name-link:hover {
-    background-color: rgba(25, 118, 210, 0.1);
-    text-decoration: none;
-}
-
 .failed-count {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-weight: 600;
@@ -64,25 +49,11 @@
     display: block;
 }
 
-.pr-link {
-    color: #1976d2;
-    text-decoration: none;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    display: inline-block;
-}
-
-.pr-link:hover {
-    background-color: rgba(25, 118, 210, 0.1);
-    text-decoration: none;
-}
-
 .pr-cell {
     min-width: 10px;
 }
 
-.pr-combined-link {
+.pr-link {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-weight: 600;
     font-size: 1rem;
@@ -91,23 +62,12 @@
     padding: 0.25rem 0.5rem;
     display: block;
     border-radius: 4px;
-    /* word-break: break-word; */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.pr-combined-link:hover {
-    background-color: rgba(25, 118, 210, 0.1);
-    text-decoration: none;
-}
-
-.pr-number-link {
-    color: #1976d2;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s ease;
-}
-
-.pr-number-link:hover {
-    color: #1565c0;
+.pr-link:hover {
     text-decoration: underline;
 }
 

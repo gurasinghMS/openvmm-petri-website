@@ -36,8 +36,8 @@ export const createColumns = (runId: string): ColumnDef<TestResult>[] => [
                 <Link
                     to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
                     state={{ testResult: info.row.original }}
-                    className="run-name-link"
-                    title={`View inspect for test: ${fullTestName}`}
+                    className="common-table-link"
+                    title={`${fullTestName}`}
                 >
                     {testName}
                 </Link>

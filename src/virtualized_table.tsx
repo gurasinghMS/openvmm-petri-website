@@ -112,12 +112,12 @@ export function VirtualizedTable<TData extends object>({
                             <tr key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     const defaultWidthMap: Record<string, number> = {
-                                        name: 100,
+                                        name: 115,
                                         creationTime: 180,
                                         status: 60,
                                         failed: 60,
                                         total: 60,
-                                        ghRun: 100,
+                                        ghRun: 115,
                                     };
                                     const effectiveWidthMap = columnWidthMap ?? defaultWidthMap;
                                     const w = effectiveWidthMap[header.column.id];
@@ -204,12 +204,12 @@ export function VirtualizedTable<TData extends object>({
                                             <tr>
                                                 {row.getVisibleCells().map((cell) => {
                                                     const defaultWidthMap: Record<string, number> = {
-                                                        name: 100,
+                                                        name: 115,
                                                         creationTime: 180,
                                                         status: 60,
                                                         failed: 60,
                                                         total: 60,
-                                                        ghRun: 100,
+                                                        ghRun: 115,
                                                     };
                                                     const effectiveWidthMap = columnWidthMap ?? defaultWidthMap;
                                                     const w = effectiveWidthMap[cell.column.id];

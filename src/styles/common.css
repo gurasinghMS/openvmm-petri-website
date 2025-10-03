@@ -69,6 +69,10 @@
     width: 100%;
 }
 
+.common-advanced-table tr:hover {
+    background-color: #f3f4f6;
+}
+
 .common-advanced-table th {
     background: #f8f9fa;
     color: #495057;
@@ -230,4 +234,19 @@
     outline: none;
     border-color: #1976d2;
     box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.1);
+}
+
+.common-table-link {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #1976d2;
+    text-decoration: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    word-break: break-word;
+}
+
+.common-table-link:hover {
+    text-decoration: underline;
 }

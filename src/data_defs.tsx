@@ -27,10 +27,3 @@ export interface RunDetailsData {
     runNumber: string;
     tests: TestResult[];
 }
-
-export interface ParsedRunResult {
-    serviceEndpoint: string;
-    containerName: string;
-    prefix: string;
-    runs: RunData[];
-}

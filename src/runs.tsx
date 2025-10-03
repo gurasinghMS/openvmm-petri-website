@@ -15,13 +15,16 @@ export function Runs(): React.JSX.Element {
   const [searchFilter, setSearchFilter] = useState<string>('');
 
   // Fetch the relevant data
-  const { data: runs = [] } = useQuery({
+  const { data: runs = [], isSuccess } = useQuery({
     queryKey: ['runs'],
     queryFn: (context) => fetchRunData(context.client),
     staleTime: 2 * 60 * 1000, // refetch every 2 minutes
     gcTime: Infinity, // never garbage collect
     refetchInterval: 2 * 60 * 1000, // automatically refetch every 2 minutes
   });
+
+  // Check if the query succeeded but returned no data (not due to filtering, not during loading)
+  const hasNoData = isSuccess && runs.length === 0;
 
   // Get the table definition (columns and default sorting)
   const navigate = useNavigate();
@@ -42,12 +45,18 @@ export function Runs(): React.JSX.Element {
           resultCount={filteredRuns.length}
         />
       </div>
-      <VirtualizedTable
-        data={filteredRuns}
-        columns={columns}
-        sorting={sorting}
-        onSortingChange={setSorting}
-      />
+      {hasNoData ? (
+        <div className='common-no-data'>
+          Table contains no data.
+        </div>
+      ) : (
+        <VirtualizedTable
+          data={filteredRuns}
+          columns={columns}
+          sorting={sorting}
+          onSortingChange={setSorting}
+        />
+      )}
     </div>
   );
 }

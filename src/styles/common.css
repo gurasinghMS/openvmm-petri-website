@@ -222,3 +222,13 @@
     margin-left: 1rem;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
+
+.common-no-data {
+    padding: 20px;
+    text-align: center;
+    font-style: italic;
+    color: #888;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 14px;
+    position: relative;
+}

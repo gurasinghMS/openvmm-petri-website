@@ -37,6 +37,9 @@ export function RunDetails({ runId }: RunDetailsProps): React.JSX.Element {
   // Conditional AND wildcard search
   const filteredTests = useMemo(() => filterTests(runDetails?.tests, searchFilter), [runDetails?.tests, searchFilter]);
 
+  // Check if the original data has no tests (not due to filtering)
+  const hasNoData = runDetails?.tests && runDetails.tests.length === 0;
+
   return (
     <div className="common-page-display">
       <div className="common-page-header">
@@ -47,15 +50,21 @@ export function RunDetails({ runId }: RunDetailsProps): React.JSX.Element {
           setSearchFilter={setSearchFilter}
         />
       </div>
-      <VirtualizedTable<TestResult>
-        data={filteredTests}
-        columns={columns}
-        sorting={sorting}
-        onSortingChange={setSorting}
-        columnWidthMap={{ architecture: 140, testName: 600, status: 80 }}
-        estimatedRowHeight={44}
-        getRowClassName={(row) => row.original.status === 'failed' ? 'failed-row' : 'passed-row'}
-      />
+      {hasNoData ? (
+        <div className='common-no-data'>
+          Table contains no data.
+        </div>
+      ) : (
+        <VirtualizedTable<TestResult>
+          data={filteredTests}
+          columns={columns}
+          sorting={sorting}
+          onSortingChange={setSorting}
+          columnWidthMap={{ architecture: 140, testName: 600, status: 80 }}
+          estimatedRowHeight={44}
+          getRowClassName={(row) => row.original.status === 'failed' ? 'failed-row' : 'passed-row'}
+        />
+      )}
     </div>
   );
 }

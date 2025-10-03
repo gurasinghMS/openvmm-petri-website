@@ -75,7 +75,7 @@ export function VirtualizedTable<TData extends object>({
     }, []);
 
     // Extracted effect hooks for clarity (see implementations below)
-    useHideScrollbarStyle();
+    // useHideScrollbarStyle();
 
     const rowVirtualizer = useVirtualizer({
         count: rows.length,

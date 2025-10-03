@@ -3,26 +3,13 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import './styles/menu.css';
 
-// New Hamburger drawer component for site navigation (replaces legacy header usage)
+// Menu component that opens from the left side
 export function Menu(): React.JSX.Element {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
-    const currentPath = window.location.pathname;
-
-    const close = useCallback(() => setOpen(false), []);
     const toggle = useCallback(() => setOpen(o => !o), []);
 
-    // Close on Escape
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') close();
-        };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-    }, [open, close]);
-
-    // Prevent body scroll while drawer open (simple approach)
+    // Prevent body scroll while drawer open
     useEffect(() => {
         if (open) {
             const prev = document.body.style.overflow;
@@ -32,12 +19,9 @@ export function Menu(): React.JSX.Element {
     }, [open]);
 
     function navigateAndClose(path: string) {
-        const target = path.startsWith('/') ? path : `/${path}`;
-        navigate(target);
-        close();
+        navigate(path);
+        toggle();
     }
-
-    const isActive = (target: string) => currentPath.endsWith('/' + target);
 
     return (
         <>
@@ -55,7 +39,7 @@ export function Menu(): React.JSX.Element {
             </button>
             {open && createPortal(
                 <>
-                    <div className="menu-overlay" onClick={close} role="presentation" />
+                    <div className="menu-overlay" onClick={toggle} role="presentation" />
                     <nav
                         className={open ? 'menu-drawer open' : 'menu-drawer'}
                         aria-hidden={!open}
@@ -65,7 +49,7 @@ export function Menu(): React.JSX.Element {
                         <ul className="menu-nav-list" role="list">
                             <li>
                                 <button
-                                    className={isActive('runs') ? 'drawer-link active' : 'drawer-link'}
+                                    className='drawer-link'
                                     onClick={() => navigateAndClose('/runs')}
                                 >
                                     Runs
@@ -73,7 +57,7 @@ export function Menu(): React.JSX.Element {
                             </li>
                             <li>
                                 <button
-                                    className={isActive('tests') ? 'drawer-link active' : 'drawer-link'}
+                                    className='drawer-link'
                                 // onClick={() => navigateAndClose('/tests')}
                                 >
                                     Tests
@@ -84,8 +68,8 @@ export function Menu(): React.JSX.Element {
                                 <a
                                     className="drawer-link external"
                                     href="https://github.com/microsoft/openvmm"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    target="_blank"  // Open in new window
+                                    rel="noopener noreferrer"  // security best practice
                                 >
                                     Repo
                                 </a>
@@ -108,5 +92,3 @@ export function Menu(): React.JSX.Element {
         </>
     );
 }
-
-export default Menu;

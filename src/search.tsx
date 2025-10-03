@@ -5,11 +5,10 @@ import './styles/common.css';
 interface SearchInputProps {
     value: string;
     onChange: (value: string) => void;
-    style?: React.CSSProperties;
     inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export function SearchInput({ value, onChange, style, inputRef }: SearchInputProps): React.JSX.Element {
+export function SearchInput({ value, onChange, inputRef }: SearchInputProps): React.JSX.Element {
     const location = useLocation();
     const navigate = useNavigate();
     const isInitialMount = useRef(true);
@@ -49,31 +48,18 @@ export function SearchInput({ value, onChange, style, inputRef }: SearchInputPro
     };
 
     return (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div>
             <input
                 ref={inputRef}
                 value={value}
                 onChange={(e) => handleChange(e.target.value)}
                 placeholder="Filter ..."
                 className="common-search-input"
-                style={{ paddingRight: '28px', ...style }}
             />
             {value && (
                 <button
                     onClick={() => handleChange('')}
-                    style={{
-                        position: 'absolute',
-                        right: '6px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '16px',
-                        color: '#888',
-                        cursor: 'pointer',
-                        padding: 0,
-                        lineHeight: 1
-                    }}
+                    className="common-search-clear-btn"
                     title="Clear filter"
                 >
                     ×

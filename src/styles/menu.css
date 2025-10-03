@@ -49,17 +49,6 @@
     /* slightly lighter and no blur */
     /* removed blur for cleaner overlay */
     z-index: 5000;
-    animation: menu-fade 120ms ease-out;
-}
-
-@keyframes menu-fade {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
 }
 
 /* Drawer */
@@ -154,15 +143,4 @@
     margin: 0.8rem 0 0.8rem;
     border-top: 1px solid #555;
     height: 0;
-}
-
-/* Narrow screen touch adjustments */
-@media (hover: none) and (pointer: coarse) {
-    .drawer-link:hover {
-        background: #525252;
-    }
-
-    .menu-trigger:hover {
-        background: #515151;
-    }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { flexRender, type Table, type Row, type ColumnDef, type SortingState, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel } from '@tanstack/react-table';
+import { flexRender, type Row, type ColumnDef, type SortingState, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel } from '@tanstack/react-table';
+import './styles/virtualized_table.css';
 
 export interface VirtualizedTableProps<TData extends object> {
     data: TData[];
@@ -38,7 +39,6 @@ export function VirtualizedTable<TData extends object>({
     onRowClick,
     scrollToIndex,
 }: VirtualizedTableProps<TData>): React.JSX.Element {
-    // Create the table inside this component
     const table = useReactTable({
         data,
         columns,
@@ -74,9 +74,6 @@ export function VirtualizedTable<TData extends object>({
         };
     }, []);
 
-    // Extracted effect hooks for clarity (see implementations below)
-    // useHideScrollbarStyle();
-
     const rowVirtualizer = useVirtualizer({
         count: rows.length,
         getScrollElement: () => tableContainerRef.current,
@@ -98,19 +95,14 @@ export function VirtualizedTable<TData extends object>({
         } catch { /* no-op */ }
     }, [scrollToIndex, rowVirtualizer, rows.length]);
 
-    // useIntertwinedInnerWheel(tableContainerRef);
-
-    // useIntertwinedOuterWheel(tableContainerRef);
-
     return (
-        <div className="common-table" style={{ position: 'relative' }}>
+        <div className="table">
             <div
                 ref={headerWrapperRef}
                 style={{
                     position: 'sticky',
                     top: '4rem',
                     zIndex: 999,
-                    background: 'white',
                     boxShadow: '0 1px 0 rgba(0,0,0,0.08)'
                 }}
             >
@@ -149,7 +141,7 @@ export function VirtualizedTable<TData extends object>({
                                             <div className="common-advanced-table-header-content" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                                 {header.column.getCanSort() && (
-                                                    <span className="common-sort-indicator" style={{ flex: '0 0 auto' }}>
+                                                    <span className="sort-indicator">
                                                         {{
                                                             asc: '↑',
                                                             desc: '↓',
@@ -244,142 +236,4 @@ export function VirtualizedTable<TData extends object>({
             </div>
         </div>
     );
-}
-
-// ===================== Extracted Effect Helpers =====================
-
-/**
- * Injects a one-time style block to hide scrollbars in the virtualized body across browsers.
- * Caveats:
- *  - Runs only in a browser environment.
- *  - Idempotent: skips if the style tag already exists (prevents duplicate nodes on hot reload).
- */
-function useHideScrollbarStyle() {
-    useEffect(() => {
-        if (typeof document === 'undefined') return;
-        const styleId = 'virtualized-table-hide-scrollbar';
-        if (document.getElementById(styleId)) return;
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-      .virtualized-table-body { scrollbar-width: none; -ms-overflow-style: none; }
-      .virtualized-table-body::-webkit-scrollbar { width: 0; height: 0; }
-    `;
-        document.head.appendChild(style);
-    }, []);
-}
-
-/**
- * Provides the inner (table container) wheel interception to enforce intertwined scroll behavior:
- *  - Scroll down: consume window scroll first, then overflow into inner container.
- *  - Scroll up: consume inner container first, then bubble to window.
- * Caveats:
- *  - Uses non-passive wheel listener to allow preventDefault (required for manual distribution of deltaY).
- *  - Assumes a stable ref; no dependencies so it runs only once.
- */
-function useIntertwinedInnerWheel(containerRef: React.RefObject<HTMLDivElement | null>) {
-    useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-        const onWheel = (e: WheelEvent) => {
-            if (e.deltaY === 0) return;
-            const deltaY = e.deltaY;
-            const docEl = document.documentElement;
-            const maxWindowScroll = docEl.scrollHeight - window.innerHeight;
-            const windowScrollY = window.scrollY;
-            if (deltaY > 0) {
-                const remainingWindowScroll = maxWindowScroll - windowScrollY;
-                if (remainingWindowScroll > 0) {
-                    e.preventDefault();
-                    const applyToWindow = Math.min(deltaY, remainingWindowScroll);
-                    if (applyToWindow !== 0) window.scrollTo({ top: windowScrollY + applyToWindow, behavior: 'auto' });
-                    const leftover = deltaY - applyToWindow;
-                    if (leftover > 0) container.scrollTop += leftover;
-                } else if (container.scrollTop < container.scrollHeight - container.clientHeight) {
-                    e.preventDefault();
-                    container.scrollTop += deltaY;
-                }
-            } else {
-                const containerScrollTop = container.scrollTop;
-                if (containerScrollTop > 0) {
-                    e.preventDefault();
-                    const possibleUp = containerScrollTop;
-                    const desiredUp = -deltaY;
-                    const applyToInner = Math.min(possibleUp, desiredUp);
-                    if (applyToInner !== 0) container.scrollTop -= applyToInner;
-                    const leftover = desiredUp - applyToInner;
-                    if (leftover > 0) {
-                        const windowUpCapacity = windowScrollY;
-                        const applyToWindow = Math.min(windowUpCapacity, leftover);
-                        if (applyToWindow !== 0) window.scrollTo({ top: windowScrollY - applyToWindow, behavior: 'auto' });
-                    }
-                } else if (windowScrollY > 0) {
-                    e.preventDefault();
-                    const applyToWindow = Math.min(windowScrollY, -deltaY);
-                    if (applyToWindow !== 0) window.scrollTo({ top: windowScrollY - applyToWindow, behavior: 'auto' });
-                }
-            }
-        };
-        container.addEventListener('wheel', onWheel, { passive: false });
-        return () => container.removeEventListener('wheel', onWheel);
-    }, []);
-}
-
-/**
- * Global wheel listener that complements the inner listener so the intertwined behavior also
- * applies when the wheel event originates outside the table container.
- * Caveats:
- *  - Also non-passive to allow preventDefault.
- *  - Does not handle horizontal scrolling; deltaY only.
- *  - Must be removed on unmount to avoid leaks.
- */
-function useIntertwinedOuterWheel(containerRef: React.RefObject<HTMLDivElement | null>) {
-    useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-        const onWindowWheel = (e: WheelEvent) => {
-            if (e.defaultPrevented || e.deltaY === 0) return;
-            if (container.contains(e.target as Node)) return; // inner listener already handling
-            const deltaY = e.deltaY;
-            const docEl = document.documentElement;
-            const maxWindowScroll = docEl.scrollHeight - window.innerHeight;
-            const windowScrollY = window.scrollY;
-            if (deltaY > 0) {
-                const remainingWindowScroll = maxWindowScroll - windowScrollY;
-                if (remainingWindowScroll > 0) {
-                    if (deltaY <= remainingWindowScroll) return; // let native window scrolling consume
-                    e.preventDefault();
-                    window.scrollTo({ top: windowScrollY + remainingWindowScroll, behavior: 'auto' });
-                    const leftover = deltaY - remainingWindowScroll;
-                    const innerRemaining = container.scrollHeight - container.clientHeight - container.scrollTop;
-                    if (innerRemaining > 0) container.scrollTop = container.scrollTop + Math.min(leftover, innerRemaining);
-                } else {
-                    const innerRemaining = container.scrollHeight - container.clientHeight - container.scrollTop;
-                    if (innerRemaining > 0) {
-                        e.preventDefault();
-                        container.scrollTop = container.scrollTop + Math.min(deltaY, innerRemaining);
-                    }
-                }
-            } else {
-                const desiredUp = -deltaY;
-                const containerScrollTop = container.scrollTop;
-                if (containerScrollTop > 0) {
-                    if (desiredUp <= containerScrollTop) {
-                        e.preventDefault();
-                        container.scrollTop = containerScrollTop - desiredUp;
-                        return;
-                    } else {
-                        e.preventDefault();
-                        container.scrollTop = 0;
-                        const leftover = desiredUp - containerScrollTop;
-                        const applyToWindow = Math.min(windowScrollY, leftover);
-                        if (applyToWindow > 0) window.scrollTo({ top: windowScrollY - applyToWindow, behavior: 'auto' });
-                        return;
-                    }
-                }
-            }
-        };
-        window.addEventListener('wheel', onWindowWheel, { passive: false });
-        return () => window.removeEventListener('wheel', onWindowWheel);
-    }, []);
 }

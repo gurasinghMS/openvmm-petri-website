@@ -1,18 +1,34 @@
 import './styles/common.css';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { RunData } from './data_defs';
 import { fetchRunData } from './fetch';
 import { Menu } from './menu.tsx';
 import { VirtualizedTable } from './virtualized_table.tsx';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { SearchInput } from './search';
 import { createColumns, defaultSorting } from './table_defs/runs';
 
 export function Runs(): React.JSX.Element {
-  const [branchFilter, setBranchFilter] = useState<string>('all');
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const branchFromUrl = searchParams.get('branchFilter') || 'all';
+  const [branchFilter, setBranchFilterState] = useState<string>(branchFromUrl);
   const [searchFilter, setSearchFilter] = useState<string>('');
+
+  // Sync state with URL on mount and when URL changes
+  useEffect(() => {
+    setBranchFilterState(branchFromUrl);
+  }, [branchFromUrl]);
+
+  // Update both state and URL when branch filter changes
+  const setBranchFilter = (branch: string) => {
+    setBranchFilterState(branch);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('branchFilter', branch);
+    setSearchParams(newParams, { replace: true });
+  };
 
   // Fetch the relevant data
   const { data: runs = [], isSuccess } = useQuery({
@@ -27,7 +43,6 @@ export function Runs(): React.JSX.Element {
   const hasNoData = isSuccess && runs.length === 0;
 
   // Get the table definition (columns and default sorting)
-  const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>(defaultSorting);
   const columns = useMemo(() => createColumns((runId: string) => navigate(`/runs/${runId}`)), [navigate]);
 

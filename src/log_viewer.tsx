@@ -412,7 +412,11 @@ export function LogViewer(): React.JSX.Element {
                     }
                     .selected {
                         outline: 2px solid #007acc !important;
-                        outline-offset: -2px;
+                        outline-offset: -3px;
+                    }
+                    /* Darker hover background for selected rows, preserving the border */
+                    .virtualized-table-row.selected:hover td {
+                        background-color: rgba(0, 0, 0, 0.08) !important;
                     }
                     .virtualized-table-row {
                         cursor: pointer;

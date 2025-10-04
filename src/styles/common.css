@@ -69,7 +69,8 @@
     width: 100%;
 }
 
-.common-advanced-table tr:hover {
+/* Default hover for virtualized table rows - can be overridden by more specific selectors */
+.virtualized-table-row:hover td {
     background-color: #f3f4f6;
 }
 
@@ -208,10 +209,9 @@
 }
 
 .common-search-clear-btn {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: relative;
+    left: -17px;
+    top: 1px;
     background: none;
     border: none;
     font-size: 16px;

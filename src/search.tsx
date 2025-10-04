@@ -48,7 +48,7 @@ export function SearchInput({ value, onChange, inputRef }: SearchInputProps): Re
     };
 
     return (
-        <div>
+        <div style={{ display: 'inline-block' }}>
             <input
                 ref={inputRef}
                 value={value}

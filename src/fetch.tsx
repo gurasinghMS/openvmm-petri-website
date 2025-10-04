@@ -209,17 +209,17 @@ function opportunisticPrefetching(runs: RunData[], queryClient: QueryClient): vo
 }
 
 
-// Function to parse detailed run data from XML
+// Function to parse detailed run data from XML using lightweight regex parsing
 function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryClient): RunDetailsData {
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-  const blobs = xmlDoc.getElementsByTagName("Blob");
   const testFolders = new Map<string, { hasJsonl: boolean, hasPassed: boolean }>();
 
-  // First pass: collect all relevant files and group by test folder
-  for (const blob of blobs) {
-    const name = blob.getElementsByTagName("Name")[0]?.textContent || "";
+  // Regex to extract Name elements from Blob entries
+  // This avoids creating a full DOM tree and just scans the text
+  const nameRegex = /<Name>([^<]+)<\/Name>/g;
+
+  let match;
+  while ((match = nameRegex.exec(xmlText)) !== null) {
+    const name = match[1];
     const nameParts = name.split("/");
     const fileName = nameParts[nameParts.length - 1];
 
@@ -350,9 +350,9 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
       // Merge tests from this page
       allTests.push(...pageResults.tests);
 
-      // Check for NextMarker to see if there are more pages
-      const parser = new DOMParser();
-      continuationToken = parser.parseFromString(data, "text/xml").getElementsByTagName("NextMarker")[0]?.textContent || null;
+      // Check for NextMarker using regex instead of DOMParser (more memory efficient)
+      const nextMarkerMatch = data.match(/<NextMarker>([^<]+)<\/NextMarker>/);
+      continuationToken = nextMarkerMatch ? nextMarkerMatch[1] : null;
     } while (continuationToken);
 
     // Sort all tests by name

@@ -86,6 +86,11 @@ export function VirtualizedTable<TData extends object>({
                 : undefined,
     });
 
+    // Force recompute when data/rows change (e.g., during filtering/searching)
+    useEffect(() => {
+        rowVirtualizer.calculateRange();
+    }, [rows.length, data, rowVirtualizer]);
+
     // Scroll to a requested index (center align) whenever scrollToIndex changes.
     useEffect(() => {
         if (scrollToIndex == null) return;

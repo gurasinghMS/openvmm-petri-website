@@ -16,7 +16,7 @@ export const createColumns = (runId: string): ColumnDef<TestResult>[] => [
             const parts = row.name.split('/');
             return parts.length > 1 ? parts[0] : 'Other';
         },
-        cell: info => <span className="architecture-name">{info.getValue() as string}</span>,
+        cell: info => <div className="architecture-name">{info.getValue() as string}</div>,
         enableSorting: true,
     },
     {

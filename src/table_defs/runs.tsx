@@ -39,7 +39,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
             header: 'Created',
             enableSorting: true,
             cell: (info) => (
-                <span className="created-date">{info.getValue<Date>().toLocaleString()}</span>
+                <div className="created-date">{info.getValue<Date>().toLocaleString()}</div>
             ),
             sortingFn: (rowA, rowB, columnId) => {
                 const a = rowA.getValue(columnId) as Date;
@@ -56,8 +56,8 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                 const status = info.getValue<string>();
                 return (
                     <div className="common-status-cell">
-                        <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-                        </span>
+                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
+                        </div>
                     </div>
                 );
             },
@@ -68,7 +68,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
             header: 'Failed',
             enableSorting: true,
             cell: (info) => (
-                <span className="failed-count">{info.getValue<number>()}</span>
+                <div className="failed-count">{info.getValue<number>()}</div>
             ),
         },
         {
@@ -77,7 +77,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
             enableSorting: true,
             accessorFn: (row) => row.metadata.petriPassed + row.metadata.petriFailed,
             cell: (info) => (
-                <span className="total-count">{info.getValue<number>()}</span>
+                <div className="total-count">{info.getValue<number>()}</div>
             ),
         },
         {
@@ -130,7 +130,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                         </a>
                     </div>
                 ) : (
-                    <span className="no-pr">-</span>
+                    <div className="no-pr">-</div>
                 );
             },
             sortingFn: (rowA, rowB) => {

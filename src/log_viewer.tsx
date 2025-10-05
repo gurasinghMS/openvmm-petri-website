@@ -219,17 +219,6 @@ export function LogViewer(): React.JSX.Element {
     // Handle keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-            const isF = e.key === 'f' || e.key === 'F';
-            const isFind = (isMac && e.metaKey && isF) || (!isMac && e.ctrlKey && isF);
-
-            if (isFind && !modalContent && document.activeElement !== searchInputRef.current) {
-                e.preventDefault();
-                searchInputRef.current?.focus();
-                searchInputRef.current?.select();
-                return;
-            }
-
             if (e.key === 'Escape') {
                 if (modalContent) {
                     setModalContent(null);

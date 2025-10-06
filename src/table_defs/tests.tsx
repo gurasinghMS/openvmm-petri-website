@@ -8,7 +8,7 @@ export const defaultSorting = [
 ];
 
 export const columnWidthMap = {
-    architecture: 140,
+    architecture: 200,
     failedCount: 80,
     totalCount: 80,
     status: 80

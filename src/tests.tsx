@@ -114,8 +114,11 @@ export function Tests(): React.JSX.Element {
     const [sorting, setSorting] = useState<SortingState>(defaultSorting);
     const columns = useMemo(() => createColumns(), []);
 
+    // Filter tests based on search terms
+    const filteredTableData = useMemo(() => filterTests(tableData, searchFilter), [tableData, searchFilter]);
+
     // For now, we'll use the number of unique tests as the result count
-    const resultCount = testMapping.size;
+    const resultCount = filteredTableData.length;
 
     return (
         <div className="common-page-display">
@@ -131,7 +134,7 @@ export function Tests(): React.JSX.Element {
                 />
             </div>
             <VirtualizedTable
-                data={tableData}
+                data={filteredTableData}
                 columns={columns}
                 sorting={sorting}
                 columnWidthMap={columnWidthMap}
@@ -194,4 +197,22 @@ export function TestsHeader({
             </div>
         </>
     );
+}
+
+/**
+ * filterTests filters the list of tests based on search terms.
+ * 
+ * - Search string is split into terms (by whitespace), and each test is checked
+ *   to see if ALL terms are present.
+ * - The searchable fields include: architecture and test name.
+ * - The filtering is case-insensitive.
+ */
+function filterTests(tests: TestData[], searchFilter: string): TestData[] {
+    const terms = searchFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return tests;
+    return tests.filter(test => {
+        // Search in architecture and name fields
+        const haystack = `${test.architecture} ${test.name}`.toLowerCase();
+        return terms.every(term => haystack.includes(term));
+    });
 }

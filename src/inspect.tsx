@@ -131,15 +131,67 @@ function node(tag: string, attrs: Record<string, any>, ...children: (string | No
 
 function highlightMatch(str: string, filter: string): HTMLElement | string {
     if (!filter) return str;
+
+    // Split filter into multiple terms by spaces
+    const terms = filter.trim().split(/\s+/).filter(t => t.length > 0);
+    if (terms.length === 0) return str;
+
+    // Build a list of all match positions for all terms
     const lowerStr = str.toLowerCase();
-    const lowerFilter = filter.toLowerCase();
-    const index = lowerStr.indexOf(lowerFilter);
-    if (index === -1) return str;
-    return node('span', {},
-        str.slice(0, index),
-        node('span', { class: 'highlight' }, str.slice(index, index + filter.length)),
-        str.slice(index + filter.length)
-    );
+    const matches: Array<{ start: number; end: number; term: string }> = [];
+
+    for (const term of terms) {
+        const lowerTerm = term.toLowerCase();
+        let searchStart = 0;
+        while (true) {
+            const index = lowerStr.indexOf(lowerTerm, searchStart);
+            if (index === -1) break;
+            matches.push({
+                start: index,
+                end: index + lowerTerm.length,
+                term: term
+            });
+            searchStart = index + 1;
+        }
+    }
+
+    // If no matches found, return the original string
+    if (matches.length === 0) return str;
+
+    // Sort matches by start position
+    matches.sort((a, b) => a.start - b.start);
+
+    // Merge overlapping matches
+    const merged: Array<{ start: number; end: number }> = [];
+    for (const match of matches) {
+        if (merged.length === 0 || match.start > merged[merged.length - 1].end) {
+            merged.push({ start: match.start, end: match.end });
+        } else {
+            // Extend the previous match if they overlap
+            merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, match.end);
+        }
+    }
+
+    // Build the result with highlighted segments
+    const result = node('span', {});
+    let lastEnd = 0;
+
+    for (const match of merged) {
+        // Add text before the match
+        if (match.start > lastEnd) {
+            result.appendChild(document.createTextNode(str.slice(lastEnd, match.start)));
+        }
+        // Add highlighted match
+        result.appendChild(node('span', { class: 'highlight' }, str.slice(match.start, match.end)));
+        lastEnd = match.end;
+    }
+
+    // Add remaining text after the last match
+    if (lastEnd < str.length) {
+        result.appendChild(document.createTextNode(str.slice(lastEnd)));
+    }
+
+    return result;
 }
 
 // ---------------- Tree Rendering Functions ----------------
@@ -304,13 +356,23 @@ function renderInspectNode(
 
     const container = node('div', { class: 'tree-children' });
 
+    // Split filter into multiple terms
+    const filterTerms = filterLower ? filterLower.split(/\s+/).filter(t => t.length > 0) : [];
+
     // Process each child of this object
     for (const child of nodeData.children) {
         const key = child.key;
         const valNode = child.value;
-        const keyMatch = key.toLowerCase().includes(filterLower);
+        const keyLower = key.toLowerCase();
         const valText = valNode.type === 'object' ? '' : formatValue(valNode);
-        const valMatch = valText.toLowerCase().includes(filterLower);
+        const valLower = valText.toLowerCase();
+
+        // Combine key and value for searching (AND logic - all terms must match)
+        const combinedText = `${keyLower} ${valLower}`;
+
+        // Check if ALL terms match somewhere in the combined key+value text (AND logic)
+        const allTermsMatch = filterTerms.length === 0 || filterTerms.every(term => combinedText.includes(term));
+
         const indent = `${depth * 1.2}em`;
         const fullPath = path ? `${path}.${key}` : key;
 
@@ -320,7 +382,7 @@ function renderInspectNode(
                 valNode,
                 filterLower,
                 fullPath,
-                keyMatch || alreadyMatched,
+                allTermsMatch || alreadyMatched,
                 depth + 1,
                 contentsRef,
                 selectedPathRef,
@@ -340,7 +402,7 @@ function renderInspectNode(
                 );
                 container.append(header, subtree);
             }
-        } else if (!filterLower || keyMatch || valMatch || alreadyMatched) {
+        } else if (filterTerms.length === 0 || allTermsMatch || alreadyMatched) {
             // Render leaf node (primitive value) if it matches the filter
             container.append(createLeafNode(key, valText, filterLower, indent, fullPath));
         }

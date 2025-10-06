@@ -9,7 +9,6 @@ export const defaultSorting = [
 
 export const columnWidthMap = {
     architecture: 140,
-    testName: 600,
     status: 80,
 };
 

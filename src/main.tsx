@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import './styles/main.css';
 import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
+import { Tests } from './tests';
 import { RunDetails } from './run_details';
 import { LogViewer } from './log_viewer';
 import { Navigate, useParams } from 'react-router-dom';
@@ -30,6 +31,7 @@ function Content() {
     <Routes>
       <Route path="/" element={<Navigate to="/runs" replace />} />
       <Route path="runs" element={<Runs />} />
+      <Route path="tests" element={<Tests />} />
       {/* Route for individual run details */}
       <Route path="runs/:runId" element={<RunDetailsRouter />} />
       {/* New route structure: /runs/:runId/:architecture/:testName (testName segment has internal slashes encoded) */}

@@ -25,8 +25,8 @@ export function RunDetails({ runId }: RunDetailsProps): React.JSX.Element {
       .fetchQuery({
         queryKey: ['runDetails', runId],
         queryFn: () => fetchRunDetails(runId, queryClient),
-        staleTime: Infinity, // never goes stale because this data should never change
-        gcTime: 20 * 60 * 1000, // still garbage collect after 20 minutes unused
+        staleTime: 60 * 1000, // goes stale after 1 min
+        gcTime: 60 * 1000, // still garbage collect after 1 minute unused
       })
       .then(setRunDetails);
   }, [queryClient, runId]);

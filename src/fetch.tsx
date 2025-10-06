@@ -23,6 +23,53 @@ export function startDataPrefetching(queryClient: QueryClient): void {
   }, 2 * 60 * 1000);  // Refetch every 2 min
 }
 
+/**
+ * Fetch run details for a collection of runs.
+ * Returns a map of runId -> RunDetailsData.
+ */
+export async function fetchTestAnalysis(
+  filteredRuns: RunData[],
+  queryClient: QueryClient,
+  onProgress?: (fetched: number, total: number) => void
+): Promise<Map<string, RunDetailsData>> {
+  const totalToFetch = filteredRuns.length;
+  let fetchedCount = 0;
+
+  // Create all prefetch promises
+  const prefetchPromises = filteredRuns.map(async (run) => {
+    const runId = run.name.split('/')[1]; // run.name is "runs/123456789", we want "123456789"
+    console.log(`Prefetching details for run ID: ${runId}`);
+    await queryClient.prefetchQuery({
+      queryKey: ['runDetails', runId],
+      queryFn: () => fetchRunDetails(runId, queryClient),
+      staleTime: Infinity, // never goes stale because this data should never change
+      gcTime: Infinity, // never garbage collect
+    });
+
+    // Increment counter and report progress after each prefetch completes
+    fetchedCount++;
+    if (onProgress) {
+      onProgress(fetchedCount, totalToFetch);
+    }
+
+    return runId;
+  });
+
+  // Wait for all prefetches to complete
+  const runIds = await Promise.all(prefetchPromises);
+
+  // Build the map from cached data
+  const runDetailsMap = new Map<string, RunDetailsData>();
+  runIds.forEach((runId) => {
+    const runDetails = queryClient.getQueryData<RunDetailsData>(['runDetails', runId]);
+    if (runDetails) {
+      runDetailsMap.set(runId, runDetails);
+    }
+  });
+
+  return runDetailsMap;
+}
+
 // Main export function - fetches and returns parsed run data
 export async function fetchRunData(queryClient: QueryClient): Promise<RunData[]> {
   try {

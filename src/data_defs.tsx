@@ -27,3 +27,15 @@ export interface RunDetailsData {
     runNumber: string;
     tests: TestResult[];
 }
+
+export interface TestRunInfo {
+    runNumber: string;
+    status: 'passed' | 'failed' | 'unknown';
+}
+
+export interface TestData {
+    architecture: string;
+    name: string;
+    failedCount: number;
+    totalCount: number;
+}

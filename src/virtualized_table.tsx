@@ -33,7 +33,7 @@ export function VirtualizedTable<TData extends object>({
     sorting,
     onSortingChange,
     columnWidthMap,
-    estimatedRowHeight = 50,
+    estimatedRowHeight = 100,
     overscan = 10,
     getRowClassName,
     onRowClick,

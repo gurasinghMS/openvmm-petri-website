@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchRunDetails } from './fetch';
 import { SearchInput } from './search';
-import { createColumns, defaultSorting } from './table_defs/run_details';
+import { createColumns, defaultSorting, columnWidthMap } from './table_defs/run_details';
 
 interface RunDetailsProps {
   runId: string;
@@ -60,7 +60,7 @@ export function RunDetails({ runId }: RunDetailsProps): React.JSX.Element {
           columns={columns}
           sorting={sorting}
           onSortingChange={setSorting}
-          columnWidthMap={{ architecture: 140, testName: 600, status: 80 }}
+          columnWidthMap={columnWidthMap}
           estimatedRowHeight={44}
           getRowClassName={(row) => row.original.status === 'failed' ? 'failed-row' : 'passed-row'}
         />

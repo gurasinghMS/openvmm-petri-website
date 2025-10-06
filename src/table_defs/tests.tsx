@@ -1,10 +1,18 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { TestData } from '../data_defs';
 import '../styles/tests.css';
+import '../styles/common.css';
 
 export const defaultSorting = [
     { id: 'failedCount', desc: true }
 ];
+
+export const columnWidthMap = {
+    architecture: 140,
+    failedCount: 80,
+    totalCount: 80,
+    status: 80
+};
 
 // Define the columns for the tests table
 export const createColumns = (): ColumnDef<TestData>[] => {
@@ -47,7 +55,7 @@ export const createColumns = (): ColumnDef<TestData>[] => {
             header: 'Failed',
             enableSorting: true,
             cell: (info) => (
-                <div className="failed-count">{info.getValue<number>()}</div>
+                <div className="common-failed-count">{info.getValue<number>()}</div>
             ),
         },
         {
@@ -55,7 +63,7 @@ export const createColumns = (): ColumnDef<TestData>[] => {
             header: 'Total',
             enableSorting: true,
             cell: (info) => (
-                <div className="total-count">{info.getValue<number>()}</div>
+                <div className="common-total-count">{info.getValue<number>()}</div>
             ),
         },
         {

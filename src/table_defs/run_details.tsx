@@ -7,6 +7,12 @@ export const defaultSorting = [
     { id: 'status', desc: false } // Sort by status ascending, failed tests first
 ];
 
+export const columnWidthMap = {
+    architecture: 140,
+    testName: 600,
+    status: 80,
+};
+
 // Define columns for the test results table
 export const createColumns = (runId: string): ColumnDef<TestResult>[] => [
     {

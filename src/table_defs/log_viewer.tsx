@@ -3,6 +3,13 @@ import { ProcessedLogEntry } from '../fetch';
 
 interface LogEntry extends ProcessedLogEntry { }
 
+export const columnWidthMap = {
+    relative: 100,
+    severity: 80,
+    source: 80,
+    screenshot: 100,
+};
+
 export function createColumns(
     setModalContent: (content: { type: 'image' | 'text' | 'iframe', content: string } | null) => void
 ): ColumnDef<LogEntry>[] {

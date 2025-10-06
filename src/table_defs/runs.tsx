@@ -6,6 +6,15 @@ export const defaultSorting = [
     { id: 'creationTime', desc: true }
 ];
 
+export const columnWidthMap = {
+    name: 115,
+    creationTime: 180,
+    status: 60,
+    failed: 60,
+    total: 60,
+    ghRun: 115,
+};
+
 // Define the columns for the runs table
 export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[] => {
     return [
@@ -68,7 +77,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
             header: 'Failed',
             enableSorting: true,
             cell: (info) => (
-                <div className="failed-count">{info.getValue<number>()}</div>
+                <div className="common-failed-count">{info.getValue<number>()}</div>
             ),
         },
         {
@@ -77,7 +86,7 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
             enableSorting: true,
             accessorFn: (row) => row.metadata.petriPassed + row.metadata.petriFailed,
             cell: (info) => (
-                <div className="total-count">{info.getValue<number>()}</div>
+                <div className="common-total-count">{info.getValue<number>()}</div>
             ),
         },
         {

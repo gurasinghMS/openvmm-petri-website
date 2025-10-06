@@ -8,7 +8,7 @@ export interface VirtualizedTableProps<TData extends object> {
     columns: ColumnDef<TData, any>[];
     sorting: SortingState;
     onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
-    columnWidthMap?: Record<string, number>;
+    columnWidthMap: Record<string, number>;
     estimatedRowHeight?: number; // default 50
     overscan?: number; // default 10
     /** Derive a className for a given row (virtual wrapper div). */
@@ -116,15 +116,7 @@ export function VirtualizedTable<TData extends object>({
                         {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
-                                    const defaultWidthMap: Record<string, number> = {
-                                        name: 115,
-                                        creationTime: 180,
-                                        status: 60,
-                                        failed: 60,
-                                        total: 60,
-                                        ghRun: 115,
-                                    };
-                                    const effectiveWidthMap = columnWidthMap ?? defaultWidthMap;
+                                    const effectiveWidthMap = columnWidthMap;
                                     const w = effectiveWidthMap[header.column.id];
                                     return (
                                         <th
@@ -208,15 +200,7 @@ export function VirtualizedTable<TData extends object>({
                                         <tbody>
                                             <tr>
                                                 {row.getVisibleCells().map((cell) => {
-                                                    const defaultWidthMap: Record<string, number> = {
-                                                        name: 115,
-                                                        creationTime: 180,
-                                                        status: 60,
-                                                        failed: 60,
-                                                        total: 60,
-                                                        ghRun: 115,
-                                                    };
-                                                    const effectiveWidthMap = columnWidthMap ?? defaultWidthMap;
+                                                    const effectiveWidthMap = columnWidthMap;
                                                     const w = effectiveWidthMap[cell.column.id];
                                                     return (
                                                         <td

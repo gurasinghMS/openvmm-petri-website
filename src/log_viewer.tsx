@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SortingState } from '@tanstack/react-table';
 import './styles/common.css';
 import { SearchInput } from './search';
-import { createColumns } from './table_defs/log_viewer';
+import { createColumns, columnWidthMap } from './table_defs/log_viewer';
 
 interface InspectViewerHeaderProps {
     runId: string;
@@ -438,12 +438,7 @@ export function LogViewer(): React.JSX.Element {
                         columns={columns}
                         sorting={sorting}
                         onSortingChange={setSorting}
-                        columnWidthMap={{
-                            relative: 100,
-                            severity: 80,
-                            source: 80,
-                            screenshot: 100,
-                        }}
+                        columnWidthMap={columnWidthMap}
                         estimatedRowHeight={50}
                         getRowClassName={(row) => {
                             const logId = `log-${row.original.index}`;

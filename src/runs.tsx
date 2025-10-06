@@ -8,7 +8,7 @@ import { Menu } from './menu.tsx';
 import { VirtualizedTable } from './virtualized_table.tsx';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { SearchInput } from './search';
-import { createColumns, defaultSorting } from './table_defs/runs';
+import { createColumns, defaultSorting, columnWidthMap } from './table_defs/runs';
 
 export function Runs(): React.JSX.Element {
   const navigate = useNavigate();
@@ -70,6 +70,7 @@ export function Runs(): React.JSX.Element {
           columns={columns}
           sorting={sorting}
           onSortingChange={setSorting}
+          columnWidthMap={columnWidthMap}
         />
       )}
     </div>

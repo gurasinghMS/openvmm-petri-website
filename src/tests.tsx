@@ -8,7 +8,7 @@ import { Menu } from './menu.tsx';
 import { VirtualizedTable } from './virtualized_table.tsx';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SearchInput } from './search';
-import { createColumns, defaultSorting } from './table_defs/tests';
+import { createColumns, defaultSorting, columnWidthMap } from './table_defs/tests';
 
 export function Tests(): React.JSX.Element {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -134,7 +134,7 @@ export function Tests(): React.JSX.Element {
                 data={tableData}
                 columns={columns}
                 sorting={sorting}
-                columnWidthMap={{ architecture: 140, name: 600, failedCount: 80, totalCount: 80, status: 80 }}
+                columnWidthMap={columnWidthMap}
                 onSortingChange={setSorting}
             />
         </div>

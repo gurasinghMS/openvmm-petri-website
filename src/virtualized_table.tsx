@@ -34,7 +34,7 @@ export function VirtualizedTable<TData extends object>({
     onSortingChange,
     columnWidthMap,
     estimatedRowHeight = 100,
-    overscan = 10,
+    overscan = 20,
     getRowClassName,
     onRowClick,
     scrollToIndex,
@@ -89,6 +89,12 @@ export function VirtualizedTable<TData extends object>({
     // Force recompute when data/rows change (e.g., during filtering/searching)
     useEffect(() => {
         rowVirtualizer.calculateRange();
+        rowVirtualizer.getVirtualItems().forEach((virtualRow) => {
+            const el = document.querySelector(`[data-index="${virtualRow.index}"]`);
+            if (el) {
+                rowVirtualizer.measureElement(el);
+            }
+        });
     }, [rows.length, data, rowVirtualizer]);
 
     // Scroll to a requested index (center align) whenever scrollToIndex changes.

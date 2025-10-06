@@ -97,9 +97,7 @@ export function RunsHeader({
       <div className="common-header-left">
         <div className="common-header-title">
           <Menu />
-          <h3>
-            <Link to="/runs" className="common-header-path">Runs</Link>
-          </h3>
+          <Link to="/runs" className="common-header-path">Runs</Link>
         </div>
         <div className="common-header-filter-buttons">
           <button

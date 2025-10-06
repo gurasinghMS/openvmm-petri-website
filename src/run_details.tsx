@@ -82,11 +82,9 @@ function RunDetailsHeader({ resultCount, runId, searchFilter, setSearchFilter }:
       <div className="common-header-left">
         <div className="common-header-title">
           <Menu />
-          <h3>
-            <Link to="/runs" className="common-header-path">Runs</Link>
-            <span>/</span>
-            <Link to={`/runs/${runId}`} className="common-header-path">{runId}</Link>
-          </h3>
+          <Link to="/runs" className="common-header-path">Runs</Link>
+          <span>/</span>
+          <Link to={`/runs/${runId}`} className="common-header-path">{runId}</Link>
         </div>
       </div>
       <div className="common-header-right">

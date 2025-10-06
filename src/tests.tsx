@@ -168,9 +168,7 @@ export function TestsHeader({
             <div className="common-header-left">
                 <div className="common-header-title">
                     <Menu />
-                    <h3>
-                        <Link to="/tests" className="common-header-path">Tests</Link>
-                    </h3>
+                    <Link to="/tests" className="common-header-path">Tests</Link>
                 </div>
                 <div className="common-header-filter-buttons">
                     <button

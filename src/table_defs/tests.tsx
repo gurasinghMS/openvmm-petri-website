@@ -23,8 +23,8 @@ export const createColumns = (): ColumnDef<TestData>[] => {
             header: 'Architecture',
             enableSorting: true,
             cell: (info) => (
-                <div className="test-name" title={info.getValue<string>()}>
-                    {info.getValue<string>()}
+                <div className="architecture-name" title={info.getValue() as string}>
+                    {info.getValue() as string}
                 </div>
             ),
             sortingFn: (rowA, rowB, columnId) => {

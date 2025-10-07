@@ -24,12 +24,14 @@ export interface TestResult {
 }
 
 export interface RunDetailsData {
+    creationTime?: Date;
     runNumber: string;
     tests: TestResult[];
 }
 
 export interface TestRunInfo {
     runNumber: string;
+    creationTime?: Date;
     status: 'passed' | 'failed' | 'unknown';
 }
 

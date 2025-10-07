@@ -127,7 +127,7 @@
 }
 
 .virtualized-table-row td {
-    padding: 0.6rem 0.5rem;
+    padding: 0.7rem 0.5rem;
     vertical-align: middle;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.9rem;
@@ -142,6 +142,34 @@
 
 .common-header-path:hover {
     text-decoration: underline;
+}
+
+.common-header-path-long {
+    color: #000000;
+    text-decoration: none;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 6rem;
+    flex-shrink: 2;
+    max-width: 100%;
+}
+
+.common-header-path-long:hover {
+    text-decoration: underline;
+}
+
+.common-sub-header {
+    flex-shrink: 0.3;
+    color: #888;
+    font-size: 0.6em;
+    font-weight: normal;
+    margin-left: 0.4rem;
+    line-height: 1.1;
+    padding-left: 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .common-status-cell {
@@ -170,18 +198,18 @@
     align-items: center;
     align-self: center;
     flex-wrap: nowrap;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 .common-header-title {
     color: #000000;
-    font-size: 1.64rem;
+    font-size: 1.44rem;
     font-weight: 600;
     vertical-align: center;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.15rem;
 }
 
 .common-header-right {
@@ -241,7 +269,6 @@
     font-weight: 600;
     color: #1976d2;
     text-decoration: none;
-    padding: 0.5rem;
     border-radius: 4px;
     font-size: 1rem;
     word-break: break-word;

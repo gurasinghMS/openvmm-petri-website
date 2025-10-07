@@ -15,7 +15,6 @@
     overflow: hidden;
     /* word-break: break-word; */
     white-space: pre-wrap;
-    padding: 0.25rem 0.5rem;
     display: block;
 }
 
@@ -29,7 +28,6 @@
     font-size: 1rem;
     color: #1976d2;
     text-decoration: none;
-    padding: 0.25rem 0.5rem;
     display: block;
     border-radius: 4px;
     overflow: hidden;

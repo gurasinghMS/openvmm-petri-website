@@ -86,7 +86,8 @@ export async function fetchTestAnalysis(
       const testRunInfo: TestRunInfo = {
         runNumber: runDetails.runNumber,
         status: test.status,
-      };
+        creationTime: runDetails.creationTime,
+      }
 
       if (!testMapping.has(testName)) {
         testMapping.set(testName, []);
@@ -119,6 +120,15 @@ export function convertToTestData(testMapping: Map<string, TestRunInfo[]>): Test
   });
 
   return data;
+}
+
+/**
+ * Convert test mapping to test details data for a specific test.
+ * Extracts the run information for a single test from the mapping.
+ */
+export function convertToTestDetailsData(testMapping: Map<string, TestRunInfo[]>, testName: string): TestRunInfo[] {
+  const testRunInfos = testMapping.get(testName);
+  return testRunInfos || [];
 }
 
 // Main export function - fetches and returns parsed run data
@@ -311,6 +321,20 @@ function opportunisticPrefetching(runs: RunData[], queryClient: QueryClient): vo
 function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryClient): RunDetailsData {
   const testFolders = new Map<string, { hasJsonl: boolean, hasPassed: boolean }>();
 
+  // Extract creation time from the first blob
+  let creationTime: Date | null = null;
+  try {
+    const creationTimeMatch = xmlText.match(/<Creation-Time>([^<]+)<\/Creation-Time>/);
+    if (creationTimeMatch) {
+      const parsedDate = new Date(creationTimeMatch[1]);
+      if (!isNaN(parsedDate.getTime())) {
+        creationTime = parsedDate;
+      }
+    }
+  } catch {
+    // If parsing fails, creationTime remains null
+  }
+
   // Regex to extract Name elements from Blob entries
   // This avoids creating a full DOM tree and just scans the text
   const nameRegex = /<Name>([^<]+)<\/Name>/g;
@@ -414,6 +438,7 @@ function parseRunDetails(xmlText: string, runNumber: string, queryClient: QueryC
   }
 
   return {
+    creationTime: creationTime ?? undefined,
     runNumber,
     tests
   };
@@ -428,6 +453,7 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
   try {
     let allTests: TestResult[] = [];
     let continuationToken: string | null = null;
+    let creationTime: Date | null = null;
 
     do {
       // Build URL with continuation token if we have one
@@ -445,6 +471,10 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
       const data = await response.text();
       const pageResults = parseRunDetails(data, runNumber, queryClient);
 
+      if (!creationTime && pageResults.creationTime) {
+        creationTime = pageResults.creationTime;
+      }
+
       // Merge tests from this page
       allTests.push(...pageResults.tests);
 
@@ -456,6 +486,7 @@ export async function fetchRunDetails(runNumber: string, queryClient: QueryClien
     // Sort all tests by name
     allTests.sort((a, b) => a.name.localeCompare(b.name));
     return {
+      creationTime: creationTime ?? undefined,
       runNumber,
       tests: allTests
     };

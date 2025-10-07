@@ -1,4 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
 import { TestData } from '../data_defs';
 import '../styles/tests.css';
 import '../styles/common.css';
@@ -8,7 +9,7 @@ export const defaultSorting = [
 ];
 
 export const columnWidthMap = {
-    architecture: 200,
+    architecture: 250,
     failedCount: 80,
     totalCount: 80,
     status: 80
@@ -39,10 +40,19 @@ export const createColumns = (): ColumnDef<TestData>[] => {
             enableSorting: true,
             cell: (info) => {
                 const name = info.getValue() as string;
-                return (< div className="test-name" title={name} >
-                    {name}
-                </div >)
-
+                const architecture = info.row.original.architecture;
+                const encodedArchitecture = encodeURIComponent(architecture);
+                const encodedTestName = encodeURIComponent(name);
+                return (
+                    <Link
+                        to={`/tests/${encodedArchitecture}/${encodedTestName}`}
+                        state={{ testData: info.row.original }}
+                        className="common-table-link"
+                        title={name}
+                    >
+                        {name}
+                    </Link>
+                );
             },
             sortingFn: (rowA, rowB, columnId) => {
                 const a = rowA.getValue(columnId) as string;

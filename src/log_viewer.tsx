@@ -37,53 +37,22 @@ function LogViewerHeader({ runId, architecture, testNameRemainder, fullTestName,
                     }}
                 >
                     <Menu />
-                    <h3
-                        style={{
-                            margin: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            overflow: 'hidden',
-                            minWidth: 0,
-                            flex: 1
-                        }}
+                    <Link to={`/runs/${runId}`} className="common-header-path">{runId}</Link>
+                    <span style={{ flexShrink: 0 }}>/</span>
+                    <Link
+                        to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
+                        className="common-header-path-long"
+                        title={fullTestName}
                     >
-                        <span style={{ flexShrink: 0 }}>../</span>
-                        <Link to={`/runs/${runId}`} className="common-header-path">{runId}</Link>
-                        <span style={{ flexShrink: 0 }}>/</span>
-                        <Link
-                            to={`/runs/${runId}/${encodedArchitecture}/${encodedRemainder}`}
-                            className="common-header-path"
-                            style={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                minWidth: 0,
-                                flexShrink: 1,
-                                color: 'inherit',
-                                display: 'block',
-                                maxWidth: '100%'
-                            }}
-                            title={fullTestName}
+                        {testNameRemainder}
+                    </Link>
+                    {architecture && (
+                        <div
+                            className="common-sub-header"
                         >
-                            {testNameRemainder}
-                        </Link>
-                        {architecture && (
-                            <span
-                                style={{
-                                    flexShrink: 0,
-                                    color: '#888',
-                                    fontSize: '0.75em',
-                                    fontWeight: 'normal',
-                                    marginLeft: '0.4rem',
-                                    lineHeight: '1',
-                                    paddingLeft: '0.4rem',
-                                }}
-                            >
-                                {architecture}
-                            </span>
-                        )}
-                    </h3>
+                            {architecture}
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="runs-header-right-section">

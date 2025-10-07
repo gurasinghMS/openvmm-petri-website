@@ -86,7 +86,8 @@ export function VirtualizedTable<TData extends object>({
                 : undefined,
     });
 
-    // Force recompute when data/rows change (e.g., during filtering/searching)
+    // Force recompute when data/rows change (e.g., during filtering/searching).
+    // This ensures the virtualizer knows about new heights if the data changes.
     useEffect(() => {
         rowVirtualizer.calculateRange();
         rowVirtualizer.getVirtualItems().forEach((virtualRow) => {

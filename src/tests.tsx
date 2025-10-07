@@ -1,9 +1,9 @@
 import './styles/common.css';
 import React, { useState, useEffect, useMemo } from 'react';
 import { SortingState } from '@tanstack/react-table';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchRunData, fetchTestAnalysis } from './fetch';
-import { RunDetailsData, TestRunInfo, TestData } from './data_defs';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchTestAnalysis, convertToTestData } from './fetch';
+import { TestData } from './data_defs';
 import { Menu } from './menu.tsx';
 import { VirtualizedTable } from './virtualized_table.tsx';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -15,7 +15,7 @@ export function Tests(): React.JSX.Element {
     const branchFromUrl = searchParams.get('branchFilter') || 'main';
     const [branchFilter, setBranchFilterState] = useState<string>(branchFromUrl);
     const [searchFilter, setSearchFilter] = useState<string>('');
-    const [runDetailsMap, setRunDetailsMap] = useState<Map<string, RunDetailsData>>(new Map());
+    const [tableData, setTableData] = useState<TestData[]>([]);
     const [fetchedCount, setFetchedCount] = useState<number>(0);
     const [totalToFetch, setTotalToFetch] = useState<number>(0);
     const queryClient = useQueryClient();
@@ -33,92 +33,26 @@ export function Tests(): React.JSX.Element {
         setSearchParams(newParams, { replace: true });
     };
 
-    // Fetch the relevant data
-    const { data: runs = [] } = useQuery({
-        queryKey: ['runs'],
-        queryFn: (context) => fetchRunData(context.client),
-        staleTime: 2 * 60 * 1000, // refetch every 2 minutes
-        gcTime: Infinity, // never garbage collect
-        refetchInterval: 2 * 60 * 1000, // automatically refetch every 2 minutes
-    });
-
-    // Filter runs based on branch selection
-    const filteredRuns = useMemo(() => {
-        return runs.filter(run => run.metadata.ghBranch === branchFilter);
-    }, [runs, branchFilter]);
-
-    // Fetch run details for each filtered run
+    // Fetch run details for the selected branch
     useEffect(() => {
-        const fetchAllRunDetails = async () => {
-            setFetchedCount(0);
-            setTotalToFetch(filteredRuns.length);
-
-            // Fetch all run details using the centralized function
-            const newRunDetailsMap = await fetchTestAnalysis(
-                filteredRuns,
-                queryClient,
-                (fetched, _total) => {
-                    setFetchedCount(fetched);
-                }
-            );
-
-            setRunDetailsMap(newRunDetailsMap);
-        };
-
-        fetchAllRunDetails();
-    }, [filteredRuns, queryClient]);
-
-    // Create mapping of testName -> TestRunInfo[]
-    const testMapping = useMemo(() => {
-        const mapping = new Map<string, TestRunInfo[]>();
-
-        runDetailsMap.forEach((runDetails) => {
-            runDetails.tests.forEach(test => {
-                const testName = test.name;
-                const testRunInfo: TestRunInfo = {
-                    runNumber: runDetails.runNumber,
-                    status: test.status,
-                };
-
-                if (!mapping.has(testName)) {
-                    mapping.set(testName, []);
-                }
-                mapping.get(testName)!.push(testRunInfo);
-            });
+        setFetchedCount(0);
+        // Fetch test analysis (which returns the test mapping)
+        fetchTestAnalysis(
+            branchFilter,
+            queryClient,
+            (fetched, total) => {
+                setFetchedCount(fetched);
+                setTotalToFetch(total);
+            }
+        ).then(testMapping => {
+            setTableData(convertToTestData(testMapping));
         });
-
-        return mapping;
-    }, [runDetailsMap]);
-
-    // Convert test mapping to table data
-    const tableData = useMemo<TestData[]>(() => {
-        const data: TestData[] = [];
-
-        testMapping.forEach((runInfos, testName) => {
-            const failedCount = runInfos.filter(info => info.status === 'failed').length;
-            const split = testName.split('/');
-            const totalCount = runInfos.length;
-
-            data.push({
-                architecture: split[0],
-                name: split[1],
-                failedCount,
-                totalCount,
-            });
-        });
-
-        return data;
-    }, [testMapping]);
+    }, [branchFilter, queryClient]);
 
     // Get the table definition (columns and default sorting)
     const [sorting, setSorting] = useState<SortingState>(defaultSorting);
     const columns = useMemo(() => createColumns(), []);
-
-    // Filter tests based on search terms
     const filteredTableData = useMemo(() => filterTests(tableData, searchFilter), [tableData, searchFilter]);
-
-    // For now, we'll use the number of unique tests as the result count
-    const resultCount = filteredTableData.length;
 
     return (
         <div className="common-page-display">
@@ -128,7 +62,7 @@ export function Tests(): React.JSX.Element {
                     setBranchFilter={setBranchFilter}
                     searchFilter={searchFilter}
                     setSearchFilter={setSearchFilter}
-                    resultCount={resultCount}
+                    resultCount={filteredTableData.length}
                     fetchedCount={fetchedCount}
                     totalToFetch={totalToFetch}
                 />

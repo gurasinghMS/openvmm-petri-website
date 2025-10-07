@@ -45,8 +45,6 @@ export function Runs(): React.JSX.Element {
   // Get the table definition (columns and default sorting)
   const [sorting, setSorting] = useState<SortingState>(defaultSorting);
   const columns = useMemo(() => createColumns((runId: string) => navigate(`/runs/${runId}`)), [navigate]);
-
-  // Filter runs based on branch selection and search terms
   const filteredRuns = useMemo(() => filterRuns(runs, branchFilter, searchFilter), [runs, branchFilter, searchFilter]);
 
   return (

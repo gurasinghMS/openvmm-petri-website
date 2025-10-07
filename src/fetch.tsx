@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { RunData, RunMetadata, TestResult, RunDetailsData } from './data_defs';
+import type { RunData, RunMetadata, TestResult, RunDetailsData, TestRunInfo, TestData } from './data_defs';
 
 /**
  * Start background data prefetching and refetching for the runs list.
@@ -24,21 +24,31 @@ export function startDataPrefetching(queryClient: QueryClient): void {
 }
 
 /**
- * Fetch run details for a collection of runs.
- * Returns a map of runId -> RunDetailsData.
+ * Fetch run details for runs filtered by branch.
+ * Returns a map of testName -> TestRunInfo[].
  */
 export async function fetchTestAnalysis(
-  filteredRuns: RunData[],
+  branchFilter: string,
   queryClient: QueryClient,
   onProgress?: (fetched: number, total: number) => void
-): Promise<Map<string, RunDetailsData>> {
+): Promise<Map<string, TestRunInfo[]>> {
+  // Fetch all runs
+  const runs = await queryClient.ensureQueryData<RunData[]>({
+    queryKey: ['runs'],
+    queryFn: () => fetchRunData(queryClient),
+    staleTime: 2 * 60 * 1000, // refetch every 2 minutes
+    gcTime: Infinity, // never garbage collect
+  });
+
+  // Filter runs based on branch selection
+  const filteredRuns = runs.filter(run => run.metadata.ghBranch === branchFilter);
+
   const totalToFetch = filteredRuns.length;
   let fetchedCount = 0;
 
   // Create all prefetch promises
   const prefetchPromises = filteredRuns.map(async (run) => {
     const runId = run.name.split('/')[1]; // run.name is "runs/123456789", we want "123456789"
-    console.log(`Prefetching details for run ID: ${runId}`);
     await queryClient.prefetchQuery({
       queryKey: ['runDetails', runId],
       queryFn: () => fetchRunDetails(runId, queryClient),
@@ -67,7 +77,48 @@ export async function fetchTestAnalysis(
     }
   });
 
-  return runDetailsMap;
+  // Create mapping of testName -> TestRunInfo[]
+  const testMapping = new Map<string, TestRunInfo[]>();
+
+  runDetailsMap.forEach((runDetails) => {
+    runDetails.tests.forEach(test => {
+      const testName = test.name;
+      const testRunInfo: TestRunInfo = {
+        runNumber: runDetails.runNumber,
+        status: test.status,
+      };
+
+      if (!testMapping.has(testName)) {
+        testMapping.set(testName, []);
+      }
+      testMapping.get(testName)!.push(testRunInfo);
+    });
+  });
+
+  return testMapping;
+}
+
+/**
+ * Convert test mapping to table data.
+ * Transforms a map of test names to their run information into a flat array of TestData.
+ */
+export function convertToTestData(testMapping: Map<string, TestRunInfo[]>): TestData[] {
+  const data: TestData[] = [];
+
+  testMapping.forEach((runInfos, testName) => {
+    const failedCount = runInfos.filter(info => info.status === 'failed').length;
+    const split = testName.split('/');
+    const totalCount = runInfos.length;
+
+    data.push({
+      architecture: split[0],
+      name: split[1],
+      failedCount,
+      totalCount,
+    });
+  });
+
+  return data;
 }
 
 // Main export function - fetches and returns parsed run data

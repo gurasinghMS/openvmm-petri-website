@@ -16,6 +16,21 @@ export const columnWidthMap = {
 export const createColumns = (testName?: string): ColumnDef<TestRunInfo>[] => {
     return [
         {
+            id: 'status',
+            header: 'Status',
+            accessorKey: 'status',
+            enableSorting: true,
+            cell: (info) => {
+                const status = info.getValue<string>();
+                return (
+                    <div className="common-status-cell">
+                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
             id: 'creationTime',
             accessorKey: 'creationTime',
             header: 'Created',
@@ -55,21 +70,6 @@ export const createColumns = (testName?: string): ColumnDef<TestRunInfo>[] => {
                 const a = rowA.getValue(columnId) as string;
                 const b = rowB.getValue(columnId) as string;
                 return a.localeCompare(b);
-            },
-        },
-        {
-            id: 'status',
-            header: 'Status',
-            accessorKey: 'status',
-            enableSorting: true,
-            cell: (info) => {
-                const status = info.getValue<string>();
-                return (
-                    <div className="common-status-cell">
-                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-                        </div>
-                    </div>
-                );
             },
         },
     ];

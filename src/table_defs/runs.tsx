@@ -19,6 +19,39 @@ export const columnWidthMap = {
 export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<RunData>[] => {
     return [
         {
+            id: 'status',
+            header: 'Status',
+            enableSorting: true,
+            accessorFn: (row) => row.metadata.petriFailed === 0 ? 'passed' : 'failed',
+            cell: (info) => {
+                const status = info.getValue<string>();
+                return (
+                    <div className="common-status-cell">
+                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            id: 'failed',
+            accessorKey: 'metadata.petriFailed',
+            header: 'Failed',
+            enableSorting: true,
+            cell: (info) => (
+                <div className="common-failed-count">{info.getValue<number>()}</div>
+            ),
+        },
+        {
+            id: 'total',
+            header: 'Total',
+            enableSorting: true,
+            accessorFn: (row) => row.metadata.petriPassed + row.metadata.petriFailed,
+            cell: (info) => (
+                <div className="common-total-count">{info.getValue<number>()}</div>
+            ),
+        },
+        {
             accessorKey: 'name',
             header: 'Run',
             enableSorting: true,
@@ -55,39 +88,6 @@ export const createColumns = (onRunClick: (runId: string) => void): ColumnDef<Ru
                 const b = rowB.getValue(columnId) as Date;
                 return a.getTime() - b.getTime();
             },
-        },
-        {
-            id: 'status',
-            header: 'Status',
-            enableSorting: true,
-            accessorFn: (row) => row.metadata.petriFailed === 0 ? 'passed' : 'failed',
-            cell: (info) => {
-                const status = info.getValue<string>();
-                return (
-                    <div className="common-status-cell">
-                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-                        </div>
-                    </div>
-                );
-            },
-        },
-        {
-            id: 'failed',
-            accessorKey: 'metadata.petriFailed',
-            header: 'Failed',
-            enableSorting: true,
-            cell: (info) => (
-                <div className="common-failed-count">{info.getValue<number>()}</div>
-            ),
-        },
-        {
-            id: 'total',
-            header: 'Total',
-            enableSorting: true,
-            accessorFn: (row) => row.metadata.petriPassed + row.metadata.petriFailed,
-            cell: (info) => (
-                <div className="common-total-count">{info.getValue<number>()}</div>
-            ),
         },
         {
             accessorKey: 'metadata.ghBranch',

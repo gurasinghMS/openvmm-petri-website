@@ -21,7 +21,7 @@ export function Tests(): React.JSX.Element {
     const queryClient = useQueryClient();
 
     // Track component mount state for dynamic concurrency control
-    const concurrencyRef = useRef(10); // Start with high concurrency
+    const concurrencyRef = useRef(10);
 
     // Update concurrency based on mount state
     useEffect(() => {

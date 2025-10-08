@@ -15,6 +15,20 @@ export const columnWidthMap = {
 // Define columns for the test results table
 export const createColumns = (runId: string): ColumnDef<TestResult>[] => [
     {
+        accessorKey: 'status',
+        header: 'Status',
+        enableSorting: true,
+        cell: (info) => {
+            const status = info.getValue<string>();
+            return (
+                <div className="common-status-cell">
+                    <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
+                    </span>
+                </div>
+            );
+        },
+    },
+    {
         id: 'architecture',
         header: 'Architecture',
         accessorFn: (row) => {
@@ -49,19 +63,5 @@ export const createColumns = (runId: string): ColumnDef<TestResult>[] => [
             );
         },
         enableSorting: true,
-    },
-    {
-        accessorKey: 'status',
-        header: 'Status',
-        enableSorting: true,
-        cell: (info) => {
-            const status = info.getValue<string>();
-            return (
-                <div className="common-status-cell">
-                    <span className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-                    </span>
-                </div>
-            );
-        },
     },
 ];

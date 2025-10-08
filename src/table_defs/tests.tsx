@@ -19,6 +19,37 @@ export const columnWidthMap = {
 export const createColumns = (): ColumnDef<TestData>[] => {
     return [
         {
+            id: 'status',
+            header: 'Status',
+            enableSorting: true,
+            accessorFn: (row) => row.failedCount === 0 ? 'passed' : 'failed',
+            cell: (info) => {
+                const status = info.getValue<string>();
+                return (
+                    <div className="common-status-cell">
+                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: 'failedCount',
+            header: 'Failed',
+            enableSorting: true,
+            cell: (info) => (
+                <div className="common-failed-count">{info.getValue<number>()}</div>
+            ),
+        },
+        {
+            accessorKey: 'totalCount',
+            header: 'Total',
+            enableSorting: true,
+            cell: (info) => (
+                <div className="common-total-count">{info.getValue<number>()}</div>
+            ),
+        },
+        {
             id: 'architecture',
             accessorKey: 'architecture',
             header: 'Architecture',
@@ -58,37 +89,6 @@ export const createColumns = (): ColumnDef<TestData>[] => {
                 const a = rowA.getValue(columnId) as string;
                 const b = rowB.getValue(columnId) as string;
                 return a.localeCompare(b);
-            },
-        },
-        {
-            accessorKey: 'failedCount',
-            header: 'Failed',
-            enableSorting: true,
-            cell: (info) => (
-                <div className="common-failed-count">{info.getValue<number>()}</div>
-            ),
-        },
-        {
-            accessorKey: 'totalCount',
-            header: 'Total',
-            enableSorting: true,
-            cell: (info) => (
-                <div className="common-total-count">{info.getValue<number>()}</div>
-            ),
-        },
-        {
-            id: 'status',
-            header: 'Status',
-            enableSorting: true,
-            accessorFn: (row) => row.failedCount === 0 ? 'passed' : 'failed',
-            cell: (info) => {
-                const status = info.getValue<string>();
-                return (
-                    <div className="common-status-cell">
-                        <div className={status === 'passed' ? 'common-status-pass' : 'common-status-fail'}>
-                        </div>
-                    </div>
-                );
             },
         },
     ];

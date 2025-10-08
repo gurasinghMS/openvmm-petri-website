@@ -9,7 +9,7 @@ export const defaultSorting = [
 
 export const columnWidthMap = {
     architecture: 300,
-    status: 80,
+    status: 60,
 };
 
 // Define columns for the test results table

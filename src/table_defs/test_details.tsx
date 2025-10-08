@@ -9,7 +9,7 @@ export const defaultSorting = [
 
 export const columnWidthMap = {
     creationTime: 210,
-    status: 80
+    status: 60
 };
 
 // Define the columns for the test details table

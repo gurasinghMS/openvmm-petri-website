@@ -26,11 +26,14 @@ export function startDataPrefetching(queryClient: QueryClient): void {
 /**
  * Fetch run details for runs filtered by branch.
  * Returns a map of testName -> TestRunInfo[].
+ * 
+ * @param getConcurrency - Optional callback to get current max concurrent requests (defaults to 5)
  */
 export async function fetchTestAnalysis(
   branchFilter: string,
   queryClient: QueryClient,
-  onProgress?: (fetched: number, total: number) => void
+  onProgress?: (fetched: number, total: number) => void,
+  getConcurrency?: () => number
 ): Promise<Map<string, TestRunInfo[]>> {
   // Fetch all runs
   const runs = await queryClient.ensureQueryData<RunData[]>({
@@ -46,27 +49,79 @@ export async function fetchTestAnalysis(
   const totalToFetch = filteredRuns.length;
   let fetchedCount = 0;
 
-  // Create all prefetch promises
-  const prefetchPromises = filteredRuns.map(async (run) => {
-    const runId = run.name.split('/')[1]; // run.name is "runs/123456789", we want "123456789"
-    await queryClient.prefetchQuery({
-      queryKey: ['runDetails', runId],
-      queryFn: () => fetchRunDetails(runId, queryClient),
-      staleTime: Infinity, // never goes stale because this data should never change
-      gcTime: Infinity, // never garbage collect
-    });
+  // Prefetch with controlled parallelism - maintains constant concurrent requests
+  // Use dynamic concurrency if provided, otherwise default to 5
+  const runIds: string[] = [];
 
-    // Increment counter and report progress after each prefetch completes
-    fetchedCount++;
-    if (onProgress) {
-      onProgress(fetchedCount, totalToFetch);
+  const prefetchRun = async (run: RunData) => {
+    const runId = run.name.split('/')[1]; // run.name is "runs/123456789", we want "123456789"
+    const key = ['runDetails', runId];
+
+    // Skip if already cached
+    if (queryClient.getQueryData(key)) {
+      fetchedCount++;
+      if (onProgress) {
+        onProgress(fetchedCount, totalToFetch);
+      }
+      return runId;
     }
 
-    return runId;
-  });
+    try {
+      await queryClient.prefetchQuery({
+        queryKey: key,
+        queryFn: () => fetchRunDetails(runId, queryClient),
+        staleTime: Infinity, // never goes stale because this data should never change
+        gcTime: Infinity, // never garbage collect
+      });
 
-  // Wait for all prefetches to complete
-  const runIds = await Promise.all(prefetchPromises);
+      // Increment counter and report progress after each prefetch completes
+      fetchedCount++;
+      if (onProgress) {
+        onProgress(fetchedCount, totalToFetch);
+      }
+
+      return runId;
+    } catch (e) {
+      console.warn(`[fetchTestAnalysis] Prefetch failed for run ${runId}`, e);
+      fetchedCount++;
+      if (onProgress) {
+        onProgress(fetchedCount, totalToFetch);
+      }
+      return runId;
+    }
+  };
+
+  // Process with rolling window - always keep maxConcurrent requests in flight
+  let currentIndex = 0;
+  const inFlight = new Set<Promise<string>>();
+
+  while (currentIndex < filteredRuns.length || inFlight.size > 0) {
+    // Get current concurrency limit (can change dynamically)
+    const maxConcurrent = getConcurrency ? getConcurrency() : 5;
+
+    // Fill up to maxConcurrent
+    while (currentIndex < filteredRuns.length && inFlight.size < maxConcurrent) {
+      const promise = prefetchRun(filteredRuns[currentIndex]);
+      inFlight.add(promise);
+      currentIndex++;
+
+      // Clean up when done and collect result
+      promise.then(
+        (runId) => {
+          inFlight.delete(promise);
+          if (runId) runIds.push(runId);
+        },
+        () => {
+          inFlight.delete(promise);
+        }
+      );
+    }
+
+    // Wait for at least one to complete before continuing
+    if (inFlight.size > 0) {
+      await Promise.race(inFlight);
+    }
+  }
 
   // Build the map from cached data
   const runDetailsMap = new Map<string, RunDetailsData>();
@@ -236,10 +291,6 @@ function parseRunData(xmlText: string, queryClient: QueryClient): RunData[] {
 }
 
 /**
- * Opportunistic prefetch strategy:
- * 1. First 7 failed runs (by creationTime desc)
- * 2. Top 10 runs overall (by creationTime desc, regardless of status/branch)
- * 3. All remaining runs where branch === 'main'
  * We avoid duplicate work and run this in the background so initial render isn't blocked.
  * Prefetches in batches of 5 concurrent requests to balance speed vs resource usage.
  */
@@ -298,7 +349,7 @@ function opportunisticPrefetching(runs: RunData[], queryClient: QueryClient): vo
             queryKey: key,
             queryFn: () => fetchRunDetails(runNumber, queryClient),
             staleTime: Infinity,
-            gcTime: 15 * 60 * 1000,
+            gcTime: Infinity,
           });
         } catch (e) {
           console.warn(`[opportunisticPrefetching] Prefetch failed for run ${runNumber}`, e);

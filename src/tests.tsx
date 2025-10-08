@@ -1,5 +1,5 @@
 import './styles/common.css';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SortingState } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchTestAnalysis, convertToTestData } from './fetch';
@@ -20,6 +20,18 @@ export function Tests(): React.JSX.Element {
     const [totalToFetch, setTotalToFetch] = useState<number | null>(null);
     const queryClient = useQueryClient();
 
+    // Track component mount state for dynamic concurrency control
+    const concurrencyRef = useRef(10); // Start with high concurrency
+
+    // Update concurrency based on mount state
+    useEffect(() => {
+        concurrencyRef.current = 10; // High concurrency when mounted
+
+        return () => {
+            concurrencyRef.current = 3; // Reduce to 3 when unmounting
+        };
+    }, []);
+
     // Sync state with URL on mount and when URL changes
     useEffect(() => {
         setBranchFilterState(branchFromUrl);
@@ -36,6 +48,7 @@ export function Tests(): React.JSX.Element {
     // Fetch run details for the selected branch
     useEffect(() => {
         setFetchedCount(0);
+
         // Fetch test analysis (which returns the test mapping)
         fetchTestAnalysis(
             branchFilter,
@@ -43,9 +56,12 @@ export function Tests(): React.JSX.Element {
             (fetched, total) => {
                 setFetchedCount(fetched);
                 setTotalToFetch(total);
-            }
+            },
+            () => concurrencyRef.current // Dynamic concurrency
         ).then(testMapping => {
             setTableData(convertToTestData(testMapping));
+        }).catch(err => {
+            console.error('Error fetching test analysis:', err);
         });
     }, [branchFilter, queryClient]);
 

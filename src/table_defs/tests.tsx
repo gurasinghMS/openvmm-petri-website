@@ -12,7 +12,7 @@ export const columnWidthMap = {
     architecture: 300,
     failedCount: 80,
     totalCount: 80,
-    status: 80
+    status: 60
 };
 
 // Define the columns for the tests table

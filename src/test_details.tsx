@@ -1,5 +1,5 @@
 import './styles/common.css';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SortingState } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchTestAnalysis, convertToTestDetailsData } from './fetch';
@@ -26,6 +26,17 @@ export function TestDetails(): React.JSX.Element {
     const testNameRemainder = encodedTestName ? decodeURIComponent(encodedTestName) : '';
     const fullTestName = architecture + '/' + testNameRemainder;
 
+    // Track component mount state for dynamic concurrency control
+    const concurrencyRef = useRef(10);
+
+    // Update concurrency based on mount state
+    useEffect(() => {
+        concurrencyRef.current = 10;
+        return () => {
+            concurrencyRef.current = 3;
+        };
+    }, []);
+
     // Sync state with URL on mount and when URL changes
     useEffect(() => {
         setBranchFilterState(branchFromUrl);
@@ -49,7 +60,8 @@ export function TestDetails(): React.JSX.Element {
             (fetched, total) => {
                 setFetchedCount(fetched);
                 setTotalToFetch(total);
-            }
+            },
+            () => concurrencyRef.current // Dynamic concurrency
         ).then(testMapping => {
             setTableData(convertToTestDetailsData(testMapping, fullTestName));
         });

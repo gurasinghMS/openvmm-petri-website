@@ -25,10 +25,9 @@ export function Tests(): React.JSX.Element {
 
     // Update concurrency based on mount state
     useEffect(() => {
-        concurrencyRef.current = 10; // High concurrency when mounted
-
+        concurrencyRef.current = 10;
         return () => {
-            concurrencyRef.current = 3; // Reduce to 3 when unmounting
+            concurrencyRef.current = 3;
         };
     }, []);
 

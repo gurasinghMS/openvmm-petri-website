@@ -17,7 +17,7 @@ export function TestDetails(): React.JSX.Element {
     const [searchFilter, setSearchFilter] = useState<string>('');
     const [tableData, setTableData] = useState<TestRunInfo[]>([]);
     const [fetchedCount, setFetchedCount] = useState<number>(0);
-    const [totalToFetch, setTotalToFetch] = useState<number>(0);
+    const [totalToFetch, setTotalToFetch] = useState<number | null>(null);
     const queryClient = useQueryClient();
 
     const { architecture: archParam, testName: encodedTestName } = useParams();
@@ -97,7 +97,7 @@ interface TestDetailsHeaderProps {
     setSearchFilter: (filter: string) => void;
     resultCount: number;
     fetchedCount: number;
-    totalToFetch: number;
+    totalToFetch: number | null;
 }
 
 export function TestDetailsHeader({
@@ -145,7 +145,15 @@ export function TestDetailsHeader({
                         main
                     </button>
                 </div>
-                {fetchedCount != totalToFetch && (
+                {totalToFetch === null && (
+                    <div className="header-loading-indicator">
+                        <div className="header-loading-spinner"></div>
+                        <div className="header-loading-text">
+                            Fetching runs ...
+                        </div>
+                    </div>
+                )}
+                {(fetchedCount != totalToFetch) && (totalToFetch !== null) && (
                     <div className="header-loading-indicator">
                         <div className="header-loading-spinner"></div>
                         <div className="header-loading-text">

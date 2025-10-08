@@ -222,7 +222,6 @@
     font-size: 1rem;
     color: #666;
     white-space: nowrap;
-    margin-left: 1rem;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
@@ -313,8 +312,8 @@
 }
 
 .header-loading-spinner {
-    width: 20px;
-    height: 20px;
+    width: 15px;
+    height: 15px;
     border: 3px solid #f3f3f3;
     border-top: 3px solid #1976d2;
     border-radius: 50%;
@@ -335,5 +334,6 @@
     font-size: 0.87rem;
     font-weight: 600;
     color: #555;
+    text-wrap: nowrap;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }

@@ -17,7 +17,7 @@ export function Tests(): React.JSX.Element {
     const [searchFilter, setSearchFilter] = useState<string>('');
     const [tableData, setTableData] = useState<TestData[]>([]);
     const [fetchedCount, setFetchedCount] = useState<number>(0);
-    const [totalToFetch, setTotalToFetch] = useState<number>(0);
+    const [totalToFetch, setTotalToFetch] = useState<number | null>(null);
     const queryClient = useQueryClient();
 
     // Sync state with URL on mount and when URL changes
@@ -85,7 +85,7 @@ interface TestsHeaderProps {
     setSearchFilter: (filter: string) => void;
     resultCount: number;
     fetchedCount: number;
-    totalToFetch: number;
+    totalToFetch: number | null;
 }
 
 export function TestsHeader({
@@ -112,7 +112,15 @@ export function TestsHeader({
                         main
                     </button>
                 </div>
-                {fetchedCount != totalToFetch && (
+                {totalToFetch === null && (
+                    <div className="header-loading-indicator">
+                        <div className="header-loading-spinner"></div>
+                        <div className="header-loading-text">
+                            Fetching runs ...
+                        </div>
+                    </div>
+                )}
+                {(fetchedCount != totalToFetch) && (totalToFetch !== null) && (
                     <div className="header-loading-indicator">
                         <div className="header-loading-spinner"></div>
                         <div className="header-loading-text">

@@ -18,7 +18,7 @@ export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<InspectObject | null>(null);
     const [filter, setFilter] = useState('');
-    const [allExpanded, setAllExpanded] = useState(true);
+    const [allExpanded, setAllExpanded] = useState(false);
     const filterInputRef = useRef<HTMLInputElement>(null);
     const contentsRef = useRef<HTMLDivElement>(null);
     const selectedPathRef = useRef<string>('');
@@ -238,7 +238,7 @@ function createTreeNodeClickHandler(
  * @returns An object with methods to control the toggle state
  */
 function createToggleControl(toggle: HTMLElement, subtree: HTMLElement) {
-    let expanded = true;
+    let expanded = false;
 
     return {
         toggle,
@@ -273,7 +273,7 @@ function createObjectNodeHeader(
     selectedPathRef: React.MutableRefObject<string>,
     allToggleButtonsRef: React.MutableRefObject<any[]>
 ) {
-    const toggle = node('span', { class: 'tree-expander', style: { cursor: 'pointer' } }, '[-]');
+    const toggle = node('span', { class: 'tree-expander', style: { cursor: 'pointer' } }, '[+]');
     const header = node('div',
         { class: 'tree-node', style: { marginLeft: indent }, 'data-path': fullPath },
         toggle,
@@ -282,6 +282,9 @@ function createObjectNodeHeader(
 
     const toggleControl = createToggleControl(toggle, subtree);
     allToggleButtonsRef.current.push(toggleControl);
+    
+    // Initialize the subtree as collapsed
+    toggleControl.setExpanded(false);
 
     // Handle toggle click
     toggle.addEventListener('click', (e) => {

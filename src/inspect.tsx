@@ -46,7 +46,16 @@ export const InspectOverlay: React.FC<InspectOverlayProps> = ({ fileUrl, onClose
         if (!contentsRef.current || !data || error) return;
 
         allToggleButtonsRef.current = [];
+        const hasFilter = filter.trim().length > 0;
         updateFilteredTree(data, filter, contentsRef, selectedPathRef, allToggleButtonsRef);
+        
+        // If filtering, expand all nodes to show matches
+        if (hasFilter) {
+            allToggleButtonsRef.current.forEach((toggleControl: any) => {
+                toggleControl.setExpanded(true);
+            });
+            setAllExpanded(true);
+        }
     }, [data, error, filter]);
 
     // Handle tree node clicks for selection

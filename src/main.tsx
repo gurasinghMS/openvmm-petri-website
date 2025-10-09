@@ -4,11 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import './styles/main.css';
 import { Routes, Route } from 'react-router-dom';
 import { Runs } from './runs';
-import { Tests } from './tests';
-import { RunDetails } from './run_details';
-import { LogViewer } from './log_viewer';
-import { TestDetails } from './test_details';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { startDataPrefetching } from './fetch';
 
@@ -32,22 +28,6 @@ function Content() {
     <Routes>
       <Route path="/" element={<Navigate to="/runs" replace />} />
       <Route path="runs" element={<Runs />} />
-      <Route path="tests" element={<Tests />} />
-      {/* Route for individual run details */}
-      <Route path="runs/:runId" element={<RunDetailsRouter />} />
-      {/* New route structure: /runs/:runId/:architecture/:testName (testName segment has internal slashes encoded) */}
-      <Route path="runs/:runId/:architecture/:testName" element={<LogViewer />} />
-      {/* Route for individual test details */}
-      <Route path="tests/:architecture/:testName" element={<TestDetails />} />
     </Routes>
   );
-}
-
-// Lightweight wrapper to adapt route params to existing RunDetailsView component props
-function RunDetailsRouter() {
-  const { runId } = useParams();
-  if (!runId) {
-    return <div style={{ padding: '1rem' }}>Run ID is missing.</div>;
-  }
-  return <RunDetails runId={runId} />;
 }

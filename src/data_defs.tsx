@@ -1,4 +1,4 @@
-// Data types used across the application
+// Data types used across the app
 export interface RunData {
     name: string;
     creationTime: Date;
@@ -14,30 +14,4 @@ export interface RunMetadata {
     ghBranch: string;
     ghPr?: string;
     prTitle?: string;
-}
-
-export interface TestResult {
-    name: string;
-    status: 'passed' | 'failed' | 'unknown';
-    path: string;
-    duration?: number;
-}
-
-export interface RunDetailsData {
-    creationTime?: Date;
-    runNumber: string;
-    tests: TestResult[];
-}
-
-export interface TestRunInfo {
-    runNumber: string;
-    creationTime?: Date;
-    status: 'passed' | 'failed' | 'unknown';
-}
-
-export interface TestData {
-    architecture: string;
-    name: string;
-    failedCount: number;
-    totalCount: number;
 }

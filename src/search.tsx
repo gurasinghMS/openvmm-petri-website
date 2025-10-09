@@ -64,31 +64,8 @@ export function SearchInput({ value, onChange, inputRef, usePersistentSearching 
                 actualRef.current?.select();
             }
 
-            if (e.key === 'Escape') {
-                // Only handle Escape if this input is focused OR if it's in a container that should handle it
-                const isFocused = document.activeElement === actualRef.current;
-
-                // Check if we're in an overlay (inspect overlay)
-                const isInOverlay = actualRef.current?.closest('.inspect-overlay') !== null;
-
-                // If this is an overlay search, only handle when focused or when there's a value
-                if (isInOverlay) {
-                    if (!isFocused && !value) {
-                        return; // Don't handle
-                    }
-                } else {
-                    // For non-overlay search bars, don't handle Escape if an overlay is open
-                    if (!isFocused && document.querySelector('.inspect-overlay')) {
-                        return; // Don't handle - an overlay is open
-                    }
-                }
-
-                if (value) {
-                    onChange('');
-                }
-                if (isFocused) {
-                    actualRef.current?.blur();
-                }
+            if (e.key === 'Escape' && value) {
+                onChange('');
             }
         };
 
@@ -96,22 +73,18 @@ export function SearchInput({ value, onChange, inputRef, usePersistentSearching 
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [value, onChange]);
 
-    const handleChange = (newValue: string) => {
-        onChange(newValue);
-    };
-
     return (
         <div style={{ display: 'inline-block' }}>
             <input
                 ref={actualRef}
                 value={value}
-                onChange={(e) => handleChange(e.target.value)}
+                onChange={(e) => onChange(e.target.value)}
                 placeholder="Filter ..."
                 className="common-search-input"
             />
             {value && (
                 <button
-                    onClick={() => handleChange('')}
+                    onClick={() => onChange('')}
                     className="common-search-clear-btn"
                     title="Clear filter"
                 >
